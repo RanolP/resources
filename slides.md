@@ -1,23 +1,124 @@
 ---
-theme: seriph
+theme: apple-basic
 title: FUN을 위한 대수적 자료형 — Church Encoding 입문
 info: |
   Algebraic Data Type for FUN: An Introduction to Church Encoding.
   A 20-minute meetup talk.
+layout: center
 class: text-center
 transition: slide-left
 mdc: true
 colorSchema: light
+background: '#fff'
 fonts:
   provider: none
   sans: 'Freesentation, Noto Sans KR, system-ui, sans-serif'
   serif: 'Freesentation, Noto Serif KR, serif'
-  mono: '"Iosevka Nerd Font", Iosevka, "JetBrains Mono", monospace'
+  mono: '"JetBrains Mono", "Noto Sans KR", monospace'
 ---
 
 # Algebraic Data Type for FUN
 
 ## Introduction to Church Encoding
+
+---
+layout: default
+class: text-left
+---
+
+# 정보의 구성
+
+- 함께 다니는 것 — **Product**
+- 함께 다닐 순 없는 것 — **Disjoint Sum**
+
+둘을 합쳐서 **대수적 자료형(Algebraic Data Type)** 이라고 부른다. <br>
+예시로 한 번 알아보자.
+
+---
+---
+
+# Product
+
+필드를 전부 **같이 사용할 수 있다**.
+
+<div class="grid grid-cols-[2fr_3fr_4fr] gap-4 text-sm">
+
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+}
+```
+
+```ts
+interface Point {
+  x: number
+  y: number
+}
+```
+
+```kotlin
+data class Point(
+  val x: Int,
+  val y: Int,
+)
+```
+
+</div>
+
+---
+---
+
+# Disjoint Sum
+
+**겹치지 않는 하나**의 변종(Variant)만 온다.
+
+<div class="grid grid-cols-[2fr_3fr_4fr] gap-4 text-sm">
+
+```rust
+enum Shape {
+  Circle(f64),
+  Square(f64),
+}
+```
+
+```ts
+type Shape =
+  | { kind: 'circle'; r: number }
+  | { kind: 'square'; s: number }
+​
+```
+
+```kotlin
+sealed interface Shape {
+  data class Circle(val r: Double) : Shape
+  data class Square(val s: Double) : Shape
+}
+```
+
+</div>
+
+---
+---
+
+# 방언으로 쓰면
+
+```funnylambda
+data Bool       = .true + .false            (* 합, 인자 없음 *)
+data Maybe[A]   = .none + .some(A)          (* 합, 인자 있음 *)
+data Pair[A, B] = .pair(A, B)               (* 곱 *)
+```
+
+```funnylambda
+match m {
+  .none    -> 0,
+  .some(x) -> x + 1
+}
+```
+
+<div class="mt-6 text-xl">
+<strong>sum</strong>(<code>+</code>) + <strong>product</strong>(<code>,</code>) = <em>Algebraic</em> Data Type.
+</div>
 
 ---
 layout: default
@@ -41,64 +142,9 @@ class: text-left
 ---
 ---
 
-# `Bool` — 가장 단순한 합
-
-```ocaml
-data Bool = .true + .false
-```
-
-```ocaml
-match b {
-  .true  -> "yes",
-  .false -> "no"
-}
-```
-
-<div class="mt-6 opacity-70">
-변형(variant)이 둘. 생성자는 인자 없음.
-</div>
-
----
----
-
-# `Maybe` — 있을 수도, 없을 수도
-
-```ocaml
-data Maybe[A] = .none + .some(A)
-```
-
-```ocaml
-match m {
-  .none    -> 0,
-  .some(x) -> x + 1
-}
-```
-
-<div class="mt-6 opacity-70">
-<code>.some</code> 은 <code>A</code> 하나를 담는 생성자 — nullable 의 타입 안전 버전.
-</div>
-
----
----
-
-# `Pair` — 곱
-
-```ocaml
-data Pair[A, B] = .pair(A, B)
-```
-
-변형은 하나뿐, 그러나 필드는 둘.
-
-<div class="mt-8 text-xl">
-<strong>sum</strong>(<code>+</code>) 과 <strong>product</strong>(<code>,</code>) 의 조합 = <em>Algebraic</em> Data Type.
-</div>
-
----
----
-
 # 람다 방언 — 표기법
 
-```ocaml
+```funnylambda
 (* 람다: 괄호 없음 *)
 x -> x                (* 항등 *)
 x -> y -> x           (* 커링이 기본 *)
@@ -154,7 +200,7 @@ let id = x -> x in id(.zero)
 
 # Church `Bool` 유도
 
-```ocaml
+```funnylambda
 (* 두 선택지를 받아 하나를 반환하는 함수 *)
 
 .true  := t -> f -> t
@@ -172,7 +218,7 @@ let id = x -> x in id(.zero)
 
 # 작동 확인
 
-```ocaml
+```funnylambda
 .true(1)(2)   (* → 1 *)
 .false(1)(2)  (* → 2 *)
 ```
@@ -181,7 +227,7 @@ let id = x -> x in id(.zero)
 
 <code>if</code> 함수가 필요할까?
 
-```ocaml
+```funnylambda
 if := b -> t -> f -> b(t)(f)
 ```
 
@@ -196,7 +242,7 @@ if := b -> t -> f -> b(t)(f)
 
 # 보너스: 논리 연산도 그냥 적용
 
-```ocaml
+```funnylambda
 and := a -> b -> a(b)(.false)
 or  := a -> b -> a(.true)(b)
 not := b -> b(.false)(.true)
@@ -215,7 +261,7 @@ not := b -> b(.false)(.true)
 
 # 무언가 익숙하지 않은가?
 
-```ocaml
+```funnylambda
 (* 원본 ADT 버전 *)
 match b {
   .true  -> t,
@@ -223,7 +269,7 @@ match b {
 }
 ```
 
-```ocaml
+```funnylambda
 (* 인코딩 후 *)
 b(t)(f)
 ```
@@ -287,7 +333,7 @@ Church-encoded 값은<br/>
 
 # 투어 ①: `Maybe`
 
-```ocaml
+```funnylambda
 data Maybe[A] = .none + .some(A)
 ```
 
@@ -296,7 +342,7 @@ data Maybe[A] = .none + .some(A)
 <div>
 
 **Encoding**
-```ocaml
+```funnylambda
 .none    := n -> s -> n
 .some(a) := n -> s -> s(a)
 ```
@@ -306,7 +352,7 @@ data Maybe[A] = .none + .some(A)
 <div>
 
 **Eliminator**
-```ocaml
+```funnylambda
 match m {
   .none    -> d,
   .some(x) -> f(x)
@@ -323,7 +369,7 @@ match m {
 
 # 투어 ②: `Pair` — 변형 하나, 필드 둘
 
-```ocaml
+```funnylambda
 data Pair[A, B] = .pair(A, B)
 ```
 
@@ -332,7 +378,7 @@ data Pair[A, B] = .pair(A, B)
 <div>
 
 **Encoding + Eliminator**
-```ocaml
+```funnylambda
 .pair(a)(b) := p -> p(a)(b)
 
 match p { .pair(a, b) -> e }
@@ -344,7 +390,7 @@ match p { .pair(a, b) -> e }
 <div>
 
 **사용**
-```ocaml
+```funnylambda
 fst := p -> p(a -> b -> a)
 snd := p -> p(a -> b -> b)
 ```
@@ -362,11 +408,11 @@ snd := p -> p(a -> b -> b)
 
 # 투어 ③: `List` — 재귀 자료형
 
-```ocaml
+```funnylambda
 data List[A] = .nil + .cons(A, List[A])
 ```
 
-```ocaml
+```funnylambda
 .nil        := n -> c -> n
 .cons(h, t) := n -> c -> c(h)(t)
 ```
