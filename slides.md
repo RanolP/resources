@@ -7,10 +7,12 @@ info: |
 class: text-center
 transition: slide-left
 mdc: true
+colorSchema: light
 fonts:
-  sans: 'Inter, Noto Sans KR'
-  serif: 'Cormorant Garamond, Noto Serif KR'
-  mono: 'JetBrains Mono, Noto Sans KR'
+  provider: none
+  sans: 'Freesentation, Noto Sans KR, system-ui, sans-serif'
+  serif: 'Freesentation, Noto Serif KR, serif'
+  mono: '"Iosevka Nerd Font", Iosevka, "JetBrains Mono", monospace'
 ---
 
 # FUN을 위한<br/>대수적 자료형
