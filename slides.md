@@ -15,17 +15,9 @@ fonts:
   mono: '"Iosevka Nerd Font", Iosevka, "JetBrains Mono", monospace'
 ---
 
-# FUN을 위한<br/>대수적 자료형
+# Algebraic Data Type for FUN
 
-## Church Encoding 입문
-
-<div class="pt-8 opacity-60 text-lg">
-  FUN = <strong>FUN</strong>ctions + <strong>FUN</strong>ny
-</div>
-
-<div class="pt-16 opacity-40">
-  <kbd>space</kbd> 로 시작 →
-</div>
+## Introduction to Church Encoding
 
 ---
 layout: default
