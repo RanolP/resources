@@ -101,62 +101,61 @@ sealed interface Shape {
 ---
 ---
 
-# 방언으로 쓰면
+# 단순한 언어로 써보기
+
+Rust, TypeScript, Kotlin 모두 괜찮은 언어지만, **더 단순하게 서술해보자**.
 
 ```funnylambda
-data Bool       = .true + .false            (* 합, 인자 없음 *)
-data Maybe[A]   = .none + .some(A)          (* 합, 인자 있음 *)
-data Pair[A, B] = .pair(A, B)               (* 곱 *)
-```
+// 곱 타입
+data Pair[A, B] = .pair(A, B)
 
-```funnylambda
+// 합 타입
+data Maybe[A]   = .none + .some(A)
+
+// match 구문
 match m {
   .none    -> 0,
   .some(x) -> x + 1
 }
 ```
 
-<div class="mt-6 text-xl">
-<strong>sum</strong>(<code>+</code>) + <strong>product</strong>(<code>,</code>) = <em>Algebraic</em> Data Type.
-</div>
-
 ---
 layout: default
 class: text-left
 ---
 
-# 만약 당신의 언어에…
+# 단순한 언어라는 것은... (1)
 
-<div class="text-2xl space-y-4 mt-8">
-
-- `if` 가 없다면?
-- `enum` 이 없다면?
-- `match` 가 없다면?
-
-</div>
-
-<div v-click class="mt-12 text-2xl">
-오늘, 이 모든 것을 <strong>함수만으로</strong> 다시 만들어봅니다.
-</div>
-
----
----
-
-# 람다 방언 — 표기법
+`if` 가 없다면?
 
 ```funnylambda
-(* 람다: 괄호 없음 *)
-x -> x                (* 항등 *)
-x -> y -> x           (* 커링이 기본 *)
+if = cond -> then -> otherwise ->
+  match cond {
+    .true => then,
+    .false => otherwise,
+  }
 
-(* 적용: 항상 커리 *)
-f(x)
-f(x)(y)               (* f 를 x 에 적용한 뒤, 그 결과를 y 에 적용 *)
-
-(* let 은 설탕 *)
-let id = x -> x in id(.zero)
-(* ≡ *) (id -> id(.zero))(x -> x)
+// if (true) { 1 } else { 0 }
+   if(.true) ( 1 )      ( 0 )
 ```
+
+---
+---
+
+
+# 단순한 언어라는 것은... (2)
+
+`data`도 `match`도 없다면?!?!
+
+**있는 게 오직 함수** 뿐이라면?!?!
+
+---
+---
+
+# `match` 없이 `if` 구현하기
+
+<MatchDerivation v-click="3" />
+<span v-click="7" />
 
 ---
 ---
@@ -201,7 +200,7 @@ let id = x -> x in id(.zero)
 # Church `Bool` 유도
 
 ```funnylambda
-(* 두 선택지를 받아 하나를 반환하는 함수 *)
+// 두 선택지를 받아 하나를 반환하는 함수 
 
 .true  := t -> f -> t
 
@@ -219,8 +218,8 @@ let id = x -> x in id(.zero)
 # 작동 확인
 
 ```funnylambda
-.true(1)(2)   (* → 1 *)
-.false(1)(2)  (* → 2 *)
+.true(1)(2)   // → 1 
+.false(1)(2)  // → 2 
 ```
 
 <div v-click class="mt-8">
@@ -262,7 +261,7 @@ not := b -> b(.false)(.true)
 # 무언가 익숙하지 않은가?
 
 ```funnylambda
-(* 원본 ADT 버전 *)
+// 원본 ADT 버전 
 match b {
   .true  -> t,
   .false -> f
@@ -270,7 +269,7 @@ match b {
 ```
 
 ```funnylambda
-(* 인코딩 후 *)
+// 인코딩 후 
 b(t)(f)
 ```
 
@@ -357,7 +356,8 @@ match m {
   .none    -> d,
   .some(x) -> f(x)
 }
-(* ≡ *) m(d)(f)
+// ≡
+m(d)(f)
 ```
 
 </div>
@@ -382,7 +382,8 @@ data Pair[A, B] = .pair(A, B)
 .pair(a)(b) := p -> p(a)(b)
 
 match p { .pair(a, b) -> e }
-(* ≡ *) p(a -> b -> e)
+// ≡
+p(a -> b -> e)
 ```
 
 </div>

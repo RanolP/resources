@@ -17,9 +17,8 @@ const funnylambda = {
   ],
   repository: {
     comment: {
-      name: 'comment.block.funnylambda',
-      begin: '\\(\\*',
-      end: '\\*\\)',
+      name: 'comment.line.double-slash.funnylambda',
+      match: '//.*',
     },
     string: {
       name: 'string.quoted.double.funnylambda',
