@@ -50,6 +50,17 @@ const spanClass = (first: number, last: number) => {
 // `true` plus the stage 2..4 expressions (each stacked at slot's left).
 const slotW = computed(() => ['4ch', '4ch', '27ch', '14ch', '0ch'][usageIdx.value])
 
+// Lambda-group's at-defa X changes with the slot's flow position so its
+// VISUAL x stays locked at col 8 (defA's column) across the 0→1
+// boundary. Slot flow x is col 7 at stage 0 (after ifPre 4ch) and col 3
+// at stage 1+ (ifPre collapsed) — so at-defa X is (8-7)=1ch at stage 0
+// and (8-3)=5ch at stage 1. During 0→1, both slot flow and at-defa X
+// animate with the same duration/ease, keeping the sum (= lambda-group
+// visual x) at col 8 throughout. Slot itself stays in natural flow, so
+// `true` inside it sits at the correct col 7 (stage 0) or col 3 (stage
+// 1) — no compensation needed for the visible-true token.
+const atDefaX = computed(() => usageIdx.value === 0 ? '1ch' : '5ch')
+
 // Lambda-group special class: the body (`then -> otherwise -> then`) is
 // visible at stage 1 too — overlaid on the original `defA` on the
 // `true = ...` def line — and then at stage 1→2 it translates from that
@@ -92,11 +103,11 @@ watch(() => $slidev.nav.clicks, (n) => {
       --><span class="uv" :class="spanClass(0, 0)" style="--uv-w:4ch"><span class="id">if</span> (</span><!--
       --><span class="slot" :style="{ '--slot-w': slotW }"><!--
          --><span class="uv sp" :class="spanClass(0, 1)" style="--uv-w:4ch"><span class="id">true</span></span><!--
-         --><span class="uv sp lambda-group" :class="lambdaClass" style="--uv-w:30ch"><!--
+         --><span class="uv sp lambda-group" :class="lambdaClass" :style="{ '--uv-w': '30ch', '--at-defa-x': atDefaX }"><!--
             --><span class="uv" :class="spanClass(2, 3)" style="--uv-w:1ch">(</span><!--
-            --><span class="uv" :class="spanClass(1, 2)" style="--uv-w:8ch"><span class="id">then</span> -&gt; </span><!--
-            --><span class="uv" :class="spanClass(1, 3)" style="--uv-w:13ch"><span class="id">otherwise</span> -&gt; </span><!--
-            --><span class="uv" :class="spanClass(1, 2)" style="--uv-w:4ch"><span class="id">then</span></span><!--
+            --><span class="uv copy-body" :class="spanClass(1, 2)" style="--uv-w:8ch"><span class="id">then</span> -&gt; </span><!--
+            --><span class="uv copy-body" :class="spanClass(1, 3)" style="--uv-w:13ch"><span class="id">otherwise</span> -&gt; </span><!--
+            --><span class="uv copy-body" :class="spanClass(1, 2)" style="--uv-w:4ch"><span class="id">then</span></span><!--
             --><span class="uv" :class="spanClass(2, 2)" style="--uv-w:1ch">)</span><!--
          --></span><!--
       --></span><!--
@@ -168,12 +179,19 @@ watch(() => $slidev.nav.clicks, (n) => {
 .uv.past,
 .uv.future { max-width: 0; opacity: 0; }
 
-/* Lambda-group "parked at defA" — overlays the original `defA` on the
- * `true = ...` line. Translate = (col-diff, row-diff * 1.5em).
- *   defA  at col 8, row 6 (l-def-true line).
- *   slot  at col 3, row 10 (l-usage line).
- *   Δ = (+5ch, −6em). */
-.lambda-group.at-defa { transform: translate(5ch, -6em); }
+.lambda-group.at-defa {
+  transform: translate(var(--at-defa-x, 5ch), -6em);
+  transition:
+    max-width 0ms,
+    opacity   0ms,
+    transform var(--t-dur) var(--ease);
+}
+/* Body pieces (the actual copied content) also snap instantly while
+ * parent is parked at defA — so the copy pops in (click 3→4) and out
+ * (click 4→3) with no width/opacity fade; only the travel is animated.
+ * Parens are NOT `.copy-body` — they belong to the slot's wrap, not
+ * the defA copy, and fade in/out normally on the 1↔2 boundary. */
+.lambda-group.at-defa .copy-body { transition-duration: 0ms; }
 
 /* Expression slot: a fixed-left-anchor container that stacks the five
  * stage-specific expression tokens absolutely at its top-left corner.
