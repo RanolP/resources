@@ -50,30 +50,25 @@ const spanClass = (first: number, last: number) => {
 // `true` plus the stage 2..4 expressions (each stacked at slot's left).
 const slotW = computed(() => ['4ch', '4ch', '27ch', '14ch', '0ch'][usageIdx.value])
 
-// Lambda-group's at-defa X changes with the slot's flow position so its
-// VISUAL x stays locked at col 8 (defA's column) across the 0→1
-// boundary. Slot flow x is col 7 at stage 0 (after ifPre 4ch) and col 3
-// at stage 1+ (ifPre collapsed) — so at-defa X is (8-7)=1ch at stage 0
-// and (8-3)=5ch at stage 1. During 0→1, both slot flow and at-defa X
-// animate with the same duration/ease, keeping the sum (= lambda-group
-// visual x) at col 8 throughout. Slot itself stays in natural flow, so
-// `true` inside it sits at the correct col 7 (stage 0) or col 3 (stage
-// 1) — no compensation needed for the visible-true token.
-const atDefaX = computed(() => usageIdx.value === 0 ? '1ch' : '5ch')
+// Lambda-group's at-defa X offsets from the slot's flow position so its
+// VISUAL x sits at col 8 (defA's column). At stage 1+ the slot is at
+// col 3 (ifPre collapsed), so 5ch reaches col 8. Stage 0 uses the same
+// 5ch even though the slot sits at col 7 then, because the group is
+// invisible at stage 0 — using a different value would cause a visible
+// horizontal slide on the 0→1 pop-in.
+const atDefaX = computed(() => '5ch')
 
-// Lambda-group special class: the body (`then -> otherwise -> then`) is
-// visible at stage 1 too — overlaid on the original `defA` on the
-// `true = ...` def line — and then at stage 1→2 it translates from that
-// defA position to the slot's natural position. At stage 0 the group is
-// hidden but still parked at the defA offset so the fade-in (click 3→4)
-// happens in place.
+// Lambda-group is parked invisibly at defA for stages 0–1. At stage 1→2
+// (click 4→5) it snaps visible instantly and travels to the slot.
 const lambdaClass = computed(() => {
   const u = usageIdx.value
-  if (u === 0) return 'future at-defa'
-  if (u === 1) return 'active at-defa'
+  if (u <= 1) return 'future at-defa'
   if (u <= 3) return 'active'
   return 'past'
 })
+
+// defA hides when the lambda-group is in the slot (usageIdx >= 2).
+const defAHidden = computed(() => usageIdx.value >= 2)
 
 // Track navigation direction so reverse playback can use the inverse-bezier
 // easing (and mirror per-element delays) — a true time-reverse of forward.
@@ -94,7 +89,7 @@ watch(() => $slidev.nav.clicks, (n) => {
    --><span class="line l-arm-false">    <span class="ctor">.false</span> =&gt; <span class="v copyB"><span class="id">then</span> -&gt; <span class="id">otherwise</span> -&gt; </span><span class="v bodyB"><span class="id">otherwise</span></span><span class="v armFalse"><span class="id">false</span></span><span class="comma punct">,</span></span><!--
    --><span class="line l-match-close">  <span class="punct">}</span></span><!--
    --><span class="line l-blank"></span><!--
-   --><span class="line l-def-true"><span class="id">true</span>  = <span class="v defA"><span class="id">then</span> -&gt; <span class="id">otherwise</span> -&gt; <span class="id">then</span></span></span><!--
+   --><span class="line l-def-true"><span class="id">true</span>  = <span class="v defA" :class="defAHidden ? 'u-hidden' : ''"><span class="id">then</span> -&gt; <span class="id">otherwise</span> -&gt; <span class="id">then</span></span></span><!--
    --><span class="line l-def-false"><span class="id">false</span> = <span class="v defB"><span class="id">then</span> -&gt; <span class="id">otherwise</span> -&gt; <span class="id">otherwise</span></span></span><!--
    --><span class="line l-blank2"></span><!--
    --><span class="line l-comment"><span class="cmt">// if (true) { 1 } else { 0 }</span></span><!--
@@ -186,12 +181,43 @@ watch(() => $slidev.nav.clicks, (n) => {
     opacity   0ms,
     transform var(--t-dur) var(--ease);
 }
-/* Body pieces (the actual copied content) also snap instantly while
- * parent is parked at defA — so the copy pops in (click 3→4) and out
- * (click 4→3) with no width/opacity fade; only the travel is animated.
- * Parens are NOT `.copy-body` — they belong to the slot's wrap, not
- * the defA copy, and fade in/out normally on the 1↔2 boundary. */
+/* While parked at defA the body is invisible, so snap transitions on
+ * copy-body are a no-op — kept for safety in case direction reverses. */
 .lambda-group.at-defa .copy-body { transition-duration: 0ms; }
+
+/* When leaving defA (fwd, state-folded only): snap visible instantly,
+ * animate only transform. :not(.past) ensures this 0ms override doesn't
+ * bleed into the u=3→4 collapse (which should fade normally via .uv). */
+.dir-fwd.state-folded .lambda-group:not(.at-defa):not(.past) {
+  transition:
+    max-width 0ms,
+    opacity   0ms,
+    transform var(--t-dur) var(--ease);
+}
+
+/* Reverse travel (state-folded only): stay visible while traveling back
+ * to defA, snap invisible at the end. */
+.dir-rev.state-folded .lambda-group.at-defa {
+  transition:
+    max-width 0ms         var(--ease) var(--t-dur),
+    opacity   0ms         var(--ease) var(--t-dur),
+    transform var(--t-dur) var(--ease);
+}
+
+/* defA hides when the lambda-group is in the slot. Class bound directly
+ * on the element; transition overrides scoped to state-folded so the
+ * derivation animation's own defA rules are untouched. */
+.defA.u-hidden { max-width: 0; opacity: 0; }
+
+.dir-fwd.state-folded .defA.u-hidden {
+  transition: max-width 0ms, opacity 0ms, transform 0ms;
+}
+.dir-rev.state-folded .defA:not(.u-hidden) {
+  transition:
+    max-width 0ms var(--ease) var(--t-dur),
+    opacity   0ms var(--ease) var(--t-dur),
+    transform 0ms;
+}
 
 /* Expression slot: a fixed-left-anchor container that stacks the five
  * stage-specific expression tokens absolutely at its top-left corner.

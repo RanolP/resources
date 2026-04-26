@@ -154,7 +154,7 @@ if = cond -> then -> otherwise ->
 
 # `match` 없이 `if` 구현하기
 
-<MatchDerivation v-click="3" />
+<MatchDerivation />
 <span v-click="7" />
 
 ---
