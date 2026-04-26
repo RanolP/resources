@@ -180,24 +180,8 @@ match(b)(           t)(          f )
 
 # 곱 타입 구성하기
 
-<div class="grid grid-cols-[2fr_3fr] gap-6">
-
-```funnylambda
-data Pair[A, B] = .pair(A, B)
-pair = a -> b -> .pair(a, b)
-
-map = p -> f -> f(p)
-map∘pair = a -> b -> map(pair(a, b))
-
-map∘pair(1)(2)(.pair(a, b) -> a)
-map∘pair(1)(2)(.pair(a, b) -> b)
-```
-
 <PairDerivation />
-
-</div>
-
-<span v-click="4" />
+<span v-click="7" />
 
 ---
 ---
