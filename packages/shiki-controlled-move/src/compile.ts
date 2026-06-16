@@ -197,18 +197,21 @@ function applyOp(
     const insertAt = op.position === 'before' ? op.lineIndex : op.lineIndex + 1
     working.lines.splice(insertAt, 0, newLine)
   } else if (op.kind === 'move') {
-    // Teleport: source tokens collapse, new tokens appear at anchor position.
     const srcLines = filterLines(working, op.selection.lineFilter)
     for (const wl of srcLines) {
       const matches = matchPattern(op.selection.pattern, wl.tokens)
       for (const match of [...matches].reverse()) {
-        // Build replacement text from matched tokens
         const movedText = match.tokenIds
           .map((id) => wl.tokens.find((t) => t.id === id)?.text ?? '')
           .join('')
         const movedColor = wl.tokens.find((t) => t.id === match.tokenIds[0])?.color ?? '#24292f'
 
-        // Find anchor line and position
+        // Delete source tokens FIRST so anchorIdx is computed on the updated array
+        const firstIdx = wl.tokens.findIndex((t) => t.id === match.tokenIds[0])
+        const lastIdx  = wl.tokens.findIndex((t) => t.id === match.tokenIds[match.tokenIds.length - 1])
+        wl.tokens = [...wl.tokens.slice(0, firstIdx), ...wl.tokens.slice(lastIdx + 1)]
+
+        // Now resolve anchor (wl may === anchorLine — already mutated above)
         const anchorFilter = op.anchor.selection.lineFilter
         const anchorLines = filterLines(working, anchorFilter)
         for (const anchorLine of anchorLines) {
@@ -224,11 +227,6 @@ function applyOp(
           anchorLine.tokens.splice(anchorIdx, 0, newTok)
           break
         }
-
-        // Delete source tokens
-        const firstIdx = wl.tokens.findIndex((t) => t.id === match.tokenIds[0])
-        const lastIdx  = wl.tokens.findIndex((t) => t.id === match.tokenIds[match.tokenIds.length - 1])
-        wl.tokens = [...wl.tokens.slice(0, firstIdx), ...wl.tokens.slice(lastIdx + 1)]
       }
     }
   }
