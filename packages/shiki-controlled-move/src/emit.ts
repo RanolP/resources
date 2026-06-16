@@ -32,8 +32,8 @@ export function emitHtml(input: EmitInput): string {
     const tokenIds = input.lineTokens[line.id] ?? []
     const step0Line = line.steps[0]
     const lineStyle = step0Line.visible
-      ? 'display:block;height:1.5em;overflow:visible;'
-      : 'display:block;height:0;overflow:visible;opacity:0;'
+      ? 'display:block;height:1.5em;overflow:hidden;'
+      : 'display:block;height:0;overflow:hidden;opacity:0;'
 
     html += `<span class="scm-line" data-line-id="${escapeHtml(line.id)}" style="${lineStyle}">`
 
