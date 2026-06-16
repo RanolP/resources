@@ -188,7 +188,7 @@ match(b)(           t)(          f )
 
 # 곱 타입 구성하기
 
-<PairDerivation />
+<PairDerivation :step="$slidev.nav.clicks" />
 <span v-click="7" />
 
 ---
