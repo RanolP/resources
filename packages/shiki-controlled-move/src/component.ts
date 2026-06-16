@@ -18,6 +18,15 @@ export function createAnimatedComponent(compiled: CompiledAnimation) {
       const root = ref<HTMLElement | null>(null)
       let prevStep = props.step
 
+      function cancelAnimations(el: HTMLElement) {
+        try {
+          ;(el as HTMLElement & { commitStyles(): void }).commitStyles()
+        } catch {
+          // commitStyles throws if the element is not rendered — safe to ignore
+        }
+        el.getAnimations().forEach((a) => a.cancel())
+      }
+
       function animate(from: number, to: number) {
         if (!root.value) return
         const clampedFrom = Math.max(0, Math.min(from, compiled.stepCount - 1))
@@ -33,6 +42,7 @@ export function createAnimatedComponent(compiled: CompiledAnimation) {
           if (!fromState || !toState) continue
           const el = root.value.querySelector<HTMLElement>(`#${CSS.escape(token.id)}`)
           if (!el) continue
+          cancelAnimations(el)
           el.animate(
             [
               { maxWidth: fromState.maxWidth, opacity: fromState.opacity, transform: fromState.transform },
@@ -48,6 +58,7 @@ export function createAnimatedComponent(compiled: CompiledAnimation) {
           if (!fromState || !toState) continue
           const el = root.value.querySelector<HTMLElement>(`[data-line-id="${CSS.escape(line.id)}"]`)
           if (!el) continue
+          cancelAnimations(el)
           el.animate(
             [
               { height: fromState.visible ? '1.5em' : '0px', opacity: fromState.visible ? 1 : 0 },
