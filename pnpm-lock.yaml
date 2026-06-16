@@ -14,6 +14,9 @@ importers:
       '@slidev/theme-apple-basic':
         specifier: latest
         version: 0.25.1
+      shiki-controlled-move:
+        specifier: workspace:*
+        version: link:packages/shiki-controlled-move
       vue:
         specifier: ^3.5.0
         version: 3.5.32(typescript@5.9.3)

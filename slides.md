@@ -17,6 +17,14 @@ fonts:
   mono: '"JetBrains Mono", "Noto Sans KR", monospace'
 ---
 
+# SumTypeAnim test
+
+<SumTypeAnim :step="$slidev.nav.clicks" />
+<span v-click />
+<span v-click />
+
+---
+
 # Algebraic Data Type for FUN
 
 ## Introduction to Church Encoding
