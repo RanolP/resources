@@ -66,4 +66,12 @@ describe('compile', () => {
     const lineId = result.lines[0].id
     expect(result.lineTokens[lineId]).toEqual([result.tokens[0].id])
   })
+
+  it('foldTo new token is included in lineTokens', () => {
+    const initial = lines('1 + 1')
+    const result = compile(initial, [[L('1 + 1').foldTo('2')]])
+    const lineId = result.lines[0].id
+    const newTok = result.tokens.find((t) => t.text === '2')!
+    expect(result.lineTokens[lineId]).toContain(newTok.id)
+  })
 })

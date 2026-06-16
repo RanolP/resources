@@ -106,7 +106,7 @@ export function compile(
   // Apply each step
   for (const ops of steps) {
     for (const op of ops) {
-      applyOp(op, working, tokMap, lineMap, nextId, tokenize, registerToken, registerLine)
+      applyOp(op, working, tokMap, lineMap, nextId, tokenize, registerToken, registerLine, lineTokens)
     }
     snapshotStep()
   }
@@ -137,6 +137,7 @@ function applyOp(
   tokenize: ((code: string) => SourceLine[]) | undefined,
   registerToken: (id: string, text: string, color: string) => void,
   registerLine: (id: string) => void,
+  lineTokens: Record<string, string[]>,
 ) {
   if (op.kind === 'delete-tokens') {
     const lines = filterLines(working, op.selection.lineFilter)
@@ -174,6 +175,20 @@ function applyOp(
           newTok,
           ...wl.tokens.slice(lastIdx + 1),
         ]
+
+        // Keep lineTokens in sync: replace matched IDs with newTok.id
+        const ltIds = lineTokens[wl.id]
+        if (ltIds) {
+          const firstLtIdx = ltIds.indexOf(match.tokenIds[0])
+          const lastLtIdx  = ltIds.indexOf(match.tokenIds[match.tokenIds.length - 1])
+          if (firstLtIdx !== -1 && lastLtIdx !== -1) {
+            lineTokens[wl.id] = [
+              ...ltIds.slice(0, firstLtIdx),
+              newTok.id,
+              ...ltIds.slice(lastLtIdx + 1),
+            ]
+          }
+        }
       }
     }
   } else if (op.kind === 'delete-line') {
@@ -194,6 +209,7 @@ function applyOp(
     }
     registerLine(newLine.id)
     newLine.tokens.forEach((t) => registerToken(t.id, t.text, t.color))
+    lineTokens[newLine.id] = newLine.tokens.map((t) => t.id)
     const insertAt = op.position === 'before' ? op.lineIndex : op.lineIndex + 1
     working.lines.splice(insertAt, 0, newLine)
   } else if (op.kind === 'move') {
@@ -225,6 +241,7 @@ function applyOp(
           const newTok: WorkingToken = { id: nextId(), text: movedText, color: movedColor }
           registerToken(newTok.id, newTok.text, newTok.color)
           anchorLine.tokens.splice(anchorIdx, 0, newTok)
+          lineTokens[anchorLine.id] = anchorLine.tokens.map((t) => t.id)
           break
         }
       }

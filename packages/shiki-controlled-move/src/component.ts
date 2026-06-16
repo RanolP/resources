@@ -19,12 +19,10 @@ export function createAnimatedComponent(compiled: CompiledAnimation) {
       let prevStep = props.step
 
       function cancelAnimations(el: HTMLElement) {
-        try {
-          ;(el as HTMLElement & { commitStyles(): void }).commitStyles()
-        } catch {
-          // commitStyles throws if the element is not rendered — safe to ignore
-        }
-        el.getAnimations().forEach((a) => a.cancel())
+        el.getAnimations().forEach((a) => {
+          try { (a as unknown as { commitStyles(): void }).commitStyles() } catch { /* not rendered */ }
+          a.cancel()
+        })
       }
 
       function animate(from: number, to: number) {
