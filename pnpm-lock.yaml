@@ -26,9 +26,6 @@ importers:
       shiki:
         specifier: ^4.0.0
         version: 4.0.2
-      vue:
-        specifier: ^3.5.0
-        version: 3.5.32(typescript@5.9.3)
     devDependencies:
       typescript:
         specifier: ^5.0.0
@@ -36,6 +33,9 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.2.6(@types/debug@4.1.13)(@types/node@22.19.17)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3)
+      vue:
+        specifier: ^3.5.0
+        version: 3.5.32(typescript@5.9.3)
 
 packages:
 
