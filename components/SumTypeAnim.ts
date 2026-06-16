@@ -1,7 +1,7 @@
 import { L, shikiControlledMove } from 'shiki-controlled-move'
 import { funnylambda } from '../setup/shiki-grammar.js'
 
-export const SumTypeAnim = shikiControlledMove(funnylambda as any)`
+const SumTypeAnim = shikiControlledMove(funnylambda as any)`
 data Maybe[A] = .none + .some(A)
 
 .none    := n -> s -> n
@@ -15,3 +15,5 @@ data Maybe[A] = .none + .some(A)
     L('none-handler').foldTo('n -> s -> n'),
     L('some-handler').foldTo('n -> s -> s(a)'),
   )
+
+export default SumTypeAnim.component

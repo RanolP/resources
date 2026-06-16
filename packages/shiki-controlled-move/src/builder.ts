@@ -52,6 +52,7 @@ class AnimationBuilderWithStep {
   get name() { return this.build().name }
   get props() { return this.build().props }
   get render() { return (this.build() as { render?: unknown }).render }
+  get component() { return this.build() }
 }
 
 interface TextMateGrammar {
