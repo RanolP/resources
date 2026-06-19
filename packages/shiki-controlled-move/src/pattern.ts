@@ -141,6 +141,10 @@ class SelectionBuilder {
     return { kind: 'move', selection: this.desc, anchor }
   }
 
+  copyTo(anchor: AnchorDescriptor): OperationDescriptor {
+    return { kind: 'copy', selection: this.desc, anchor }
+  }
+
   before(): AnchorBuilder {
     return new AnchorBuilder(this.desc, 'before')
   }

@@ -39,6 +39,7 @@ export type OperationDescriptor =
   | { kind: 'fold'; selection: SelectionDescriptor; replacement: string | ((caps: Record<string, string>) => string); effect: FoldEffect }
   | { kind: 'delete-tokens'; selection: SelectionDescriptor; effect: DeleteEffect }
   | { kind: 'move'; selection: SelectionDescriptor; anchor: AnchorDescriptor }
+  | { kind: 'copy'; selection: SelectionDescriptor; anchor: AnchorDescriptor }
   | { kind: 'delete-line'; lineIndex: number }
   | { kind: 'insert-line'; lineIndex: number; position: 'before' | 'after'; text: string }
   | { kind: 'insert-tokens'; anchor: AnchorDescriptor; text: string }

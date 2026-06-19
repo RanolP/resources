@@ -90,10 +90,13 @@ export function createAnimatedComponent(compiled: CompiledAnimation) {
           const el = root.value.querySelector<HTMLElement>(`[data-line-id="${CSS.escape(line.id)}"]`)
           if (!el) continue
           cancelAnimations(el)
+          // Height only — no line-level opacity. A deleted line's static text fades per-token;
+          // animating line opacity would also fade a still-live token that moved out of this
+          // line but keeps its DOM slot here (cross-line move).
           el.animate(
             [
-              { height: fromState.visible ? '1.5em' : '0px', opacity: fromState.visible ? 1 : 0 },
-              { height: toState.visible   ? '1.5em' : '0px', opacity: toState.visible   ? 1 : 0 },
+              { height: fromState.visible ? '1.5em' : '0px' },
+              { height: toState.visible   ? '1.5em' : '0px' },
             ],
             { duration: DURATION, easing, fill: 'forwards' },
           )

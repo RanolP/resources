@@ -79,6 +79,12 @@ export function compile(
   // destination via a transform — a true interpolation, not hide-at-source/show-at-dest.
   const displaced = new Set<string>()
 
+  // Last live transform per token. When a displaced token (a copy/move that is held at its
+  // visual spot by a non-zero transform) later dies, it must fade OUT in place — not snap to
+  // translate(0,0), which is its DOM-home origin on another line and would make it fly back
+  // there while fading. So we remember the transform it had while alive and reuse it on death.
+  const lastTransform = new Map<string, string>()
+
   // Helper: record the current working state as step N states.
   // Each token gets two positions: its DOM-flow position (walking lineAllTokens, where a
   // displaced token contributes zero width so the source gap closes) and its logical
@@ -95,8 +101,12 @@ export function compile(
     const domRow = new Map<string, number>()
     let domRowCounter = 0
     for (const lineId of lineOrder) {
-      if (!liveLineIds.has(lineId)) continue
-      const row = domRowCounter++
+      // Assign every line (live or not) a row, but only advance the counter for live lines.
+      // A deleted line therefore gets the row of the next visible line it collapsed into
+      // (height 0), so a displaced token orphaned in a deleted source line still gets a
+      // correct domRow and its transform keeps pointing at the live destination.
+      const row = domRowCounter
+      if (liveLineIds.has(lineId)) domRowCounter++
       let col = 0
       for (const tid of lineAllTokens[lineId] ?? []) {
         domCol.set(tid, col)
@@ -119,7 +129,13 @@ export function compile(
     })
 
     for (const [id, pt] of tokMap) {
-      if (!liveTokenIds.has(id)) { pt.stepStates.push(hiddenState); continue }
+      if (!liveTokenIds.has(id)) {
+        // A dead displaced token fades out in place at its last position; everything else
+        // collapses at its own DOM slot (transform 0,0).
+        const lt = displaced.has(id) ? lastTransform.get(id) : undefined
+        pt.stepStates.push(lt ? { maxWidth: '0ch', opacity: 0, transform: lt } : hiddenState)
+        continue
+      }
       const footprint = displaced.has(id) ? 0 : pt.text.length
       const dCol = domCol.get(id) ?? 0
       const dRow = domRow.get(id) ?? 0
@@ -127,11 +143,9 @@ export function compile(
       const lRow = logRow.has(id) ? logRow.get(id)! : dRow
       const dx = lCol - dCol
       const dy = (lRow - dRow) * 1.5
-      pt.stepStates.push({
-        maxWidth: `${footprint}ch`,
-        opacity: 1,
-        transform: dx === 0 && dy === 0 ? 'translate(0px,0px)' : `translate(${dx}ch,${dy}em)`,
-      })
+      const transform = dx === 0 && dy === 0 ? 'translate(0px,0px)' : `translate(${dx}ch,${dy}em)`
+      lastTransform.set(id, transform)
+      pt.stepStates.push({ maxWidth: `${footprint}ch`, opacity: 1, transform })
     }
     for (const [id, pl] of lineMap) {
       pl.stepStates.push({ visible: liveLineIds.has(id) })
@@ -331,6 +345,72 @@ function applyOp(
           lineCurrentTokens[anchorLine.id] = anchorLine.tokens.map((t) => t.id)
           // Mark displaced: DOM stays at source, transform slides them to the destination
           for (const t of movedTokens) displaced.add(t.id)
+          break
+        }
+      }
+    }
+  } else if (op.kind === 'copy') {
+    // Like move, but the originals stay put. New duplicate tokens are created whose DOM home
+    // is the source line (spliced in just before the first original, so they peel off it) and
+    // whose logical home is the anchor destination. They are marked displaced, so snapshotStep
+    // glides them from source to destination while the originals stay full-width, transform 0.
+    const srcLines = filterLines(working, op.selection.lineFilter)
+    for (const wl of srcLines) {
+      const matches = matchPattern(op.selection.pattern, wl.tokens, op.selection.focus, op.selection.nth)
+      for (const match of [...matches].reverse()) {
+        const sourceTokens = match.tokenIds
+          .map((id) => wl.tokens.find((t) => t.id === id))
+          .filter((t): t is WorkingToken => t !== undefined)
+        if (sourceTokens.length === 0) continue
+
+        // Create duplicate tokens (new ids, same text/color). registerToken backfills hidden
+        // states for prior steps so they only appear from this step onward.
+        const copies: WorkingToken[] = sourceTokens.map((t) => ({ id: nextId(), text: t.text, color: t.color }))
+        copies.forEach((t) => registerToken(t.id, t.text, t.color))
+
+        // DOM home = source line: splice the copy ids immediately before the first original id,
+        // so copies share the originals' start column and visibly peel off them.
+        const allIds = lineAllTokens[wl.id]
+        if (allIds) {
+          const copyIds = copies.map((t) => t.id)
+          // Anchor at the source's first token. When that token is itself displaced (its DOM
+          // slot lives on another line after an earlier move/copy), it is absent from this
+          // line's DOM list, so fall back to its *logical* column: splice after the nearest
+          // preceding logical token that does have a DOM slot here (or before the nearest
+          // following one), not at the end of the line.
+          let domIdx = allIds.indexOf(sourceTokens[0].id)
+          if (domIdx === -1) {
+            const logical = lineCurrentTokens[wl.id] ?? []
+            const srcLogIdx = logical.indexOf(sourceTokens[0].id)
+            domIdx = allIds.length // fallback: append at end
+            let found = false
+            // nearest preceding logical token that has a DOM slot here → splice after it
+            for (let i = srcLogIdx - 1; i >= 0 && !found; i--) {
+              const di = allIds.indexOf(logical[i])
+              if (di !== -1) { domIdx = di + 1; found = true }
+            }
+            // else nearest following logical token with a DOM slot → splice before it
+            for (let i = srcLogIdx + 1; i < logical.length && !found; i++) {
+              const di = allIds.indexOf(logical[i])
+              if (di !== -1) { domIdx = di; found = true }
+            }
+          }
+          lineAllTokens[wl.id] = [...allIds.slice(0, domIdx), ...copyIds, ...allIds.slice(domIdx)]
+        }
+
+        // Logical home = destination: resolve anchor exactly as move does.
+        const anchorLines = filterLines(working, op.anchor.selection.lineFilter)
+        for (const anchorLine of anchorLines) {
+          const anchorMatches = matchPattern(op.anchor.selection.pattern, anchorLine.tokens, op.anchor.selection.focus, op.anchor.selection.nth)
+          if (anchorMatches.length === 0) continue
+          const anchorMatch = anchorMatches[0]
+          const anchorIdx = op.anchor.side === 'before'
+            ? anchorLine.tokens.findIndex((t) => t.id === anchorMatch.tokenIds[0])
+            : anchorLine.tokens.findIndex((t) => t.id === anchorMatch.tokenIds[anchorMatch.tokenIds.length - 1]) + 1
+
+          anchorLine.tokens.splice(anchorIdx, 0, ...copies)
+          lineCurrentTokens[anchorLine.id] = anchorLine.tokens.map((t) => t.id)
+          for (const t of copies) displaced.add(t.id)
           break
         }
       }

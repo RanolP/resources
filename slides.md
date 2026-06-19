@@ -154,8 +154,8 @@ if = cond -> then -> otherwise ->
 
 # `match` 없이 `if` 구현하기
 
-<MatchDerivation />
-<span v-click="7" />
+<MatchDerivation :step="$slidev.nav.clicks" />
+<span v-click="8" />
 
 ---
 ---
@@ -186,35 +186,100 @@ match(b)(           t)(          f )
 ---
 ---
 
-# 렌즈: 값 = 자기 자신의 eliminator
+# 값의 본질
 
-<div class="text-2xl mt-8">
-Church-encoded 값은<br/>
-"<strong>나를 어떻게 소비할지</strong>" 를 받는 함수다.
+새로운 종류의 값을 **도입(Introduce)** 한다는 것은,
+
+값을 **소거(Eliminate)** 할 방법을 정의한다는 것이다.
+
+<div v-click class="text-4 flex justify-center">
+
+<div class="w-fit py-1 px-8 bg-cyan-200">
+
+*이런 게 재밌다면 프로그래밍 언어론을 배워봅시다.*
+
+<div class="text-3 text-left prod-rules">
+
+$$
+\frac{\Gamma \vdash a : A \qquad \Gamma \vdash b : B}{\Gamma \vdash (a, b) : A \times B}\ (\text{Prod-Intro}) \\[1em]
+\frac{\Gamma \vdash p : A \times B}{\Gamma \vdash \textrm{fst }p : A}\ (\text{Prod-Elim}_1) \\[1em]
+\frac{\Gamma \vdash p : A \times B}{\Gamma \vdash \textrm{snd }p : B}\ (\text{Prod-Elim}_2)
+$$
+
 </div>
 
-<div v-click class="mt-10 opacity-70">
-생성자(constructor) 를 "구조" 로 보지 말고,<br/>
-<strong>분기 선택기(branch selector)</strong> 로 보면 된다.
+</div>
+
+<style scoped>
+.prod-rules .katex-display,
+.prod-rules .katex-display > .katex {
+  text-align: left;
+}
+</style>
+
 </div>
 
 ---
 ---
 
-# 일반 공식
+# 합 타입과 곱 타입의 쌍대성(Duality)
 
-임의의 ADT 에 대해:
+<div class="grid grid-cols-2 gap-6 mt-4">
 
-<div class="mt-6 text-lg space-y-3">
+<div v-click>
 
-- 각 <strong>변형마다</strong> 핸들러를 하나씩 받는다
-- 자신의 변형에 해당하는 핸들러에
-- 자신이 담고 있는 필드를 인자로 넘겨 호출한다
+합 타입은 처리자의 묶음으로, 값이 하나다.
+```funnylambda
+left(1)(l -> ...)(r -> ...)
+```
 
 </div>
 
-<div v-click class="mt-8 text-xl">
-<strong>같은 템플릿</strong>이 모든 ADT 에 통한다는 것을 지금부터 확인.
+<div v-click>
+
+곱 타입은 값의 묶음으로, 처리자가 하나다.
+```funnylambda
+pair(1, 2)(a -> b -> ...)
+```
+
+</div>
+
+<div v-click>
+
+거울처럼 뒤집히면 서로를 바라보는 관계를 쌍대성이라고 한다.
+
+</div>
+
+</div>
+
+<div class="grid grid-cols-2 gap-6 mt-4">
+
+<div v-click>
+
+합 타입 값을 만들면 곱 타입 값을 소비할 수 있다.
+```funnylambda
+show(true)
+    // ==> a -> b -> a
+show(fst)
+    // ==> a -> b -> a
+pair(a)(b)(true)
+    // ==> a
+```
+
+</div>
+
+<div v-click>
+
+곱 타입 값을 만들면 합 타입 값을 소비할 수 있다.
+```funnylambda
+show     (pair(_ -> true)(_ -> false))
+         // ==> f -> f(_ -> true)(_ -> false)
+if(true) (pair(_ -> true)(_ -> false))
+         // ==> true
+```
+
+</div>
+
 </div>
 
 ---

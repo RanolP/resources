@@ -26,14 +26,20 @@ function stateToStyle(state: TokenStepState, color: string): string {
 export function emitHtml(input: EmitInput): string {
   const tokById = new Map(input.tokens.map((t) => [t.id, t]))
 
-  let html = '<pre class="scm-frame">'
+  // Frame is the single clip boundary: a cross-line moved token leaves its source
+  // `.scm-line` and travels through the frame, so the line must NOT clip — the frame does.
+  let html = '<pre class="scm-frame" style="overflow:hidden;">'
 
   for (const line of input.lines) {
     const tokenIds = input.lineTokens[line.id] ?? []
     const step0Line = line.steps[0]
+    // overflow:visible so a token mid-move can render outside its line box. A hidden line
+    // collapses via height only (no opacity) — its deleted static text is already hidden
+    // per-token, and keeping line opacity would fade a moved-away (still-live) token that
+    // is still parented in a now-deleted source line.
     const lineStyle = step0Line.visible
-      ? 'display:block;height:1.5em;overflow:hidden;'
-      : 'display:block;height:0;overflow:hidden;opacity:0;'
+      ? 'display:block;height:1.5em;overflow:visible;'
+      : 'display:block;height:0;overflow:visible;'
 
     html += `<span class="scm-line" data-line-id="${escapeHtml(line.id)}" style="${lineStyle}">`
 

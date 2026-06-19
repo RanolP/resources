@@ -67,6 +67,29 @@ describe('compile', () => {
     expect(result.lineTokens[lineId]).toEqual([result.tokens[0].id])
   })
 
+  it('cross-line move gives a non-zero vertical (em) transform', () => {
+    // Move 'abc' (line 0) to after 'xyz' (line 1): its DOM slot stays on line 0 while
+    // its logical row becomes line 1, so the transform must carry a vertical (em) offset.
+    const result = compile(lines('abc\nxyz'), [
+      [L[0]('abc').moveTo(L[1]('xyz').after())],
+    ])
+    const tok = result.tokens.find((t) => t.text === 'abc')!
+    expect(tok.float).toBe(true)
+    const dyMatch = /,(-?\d*\.?\d+)em\)/.exec(tok.steps[1].transform)
+    expect(dyMatch).not.toBeNull()
+    expect(Number(dyMatch![1])).not.toBe(0)
+  })
+
+  it('moved token stays opacity 1 after its source line is deleted', () => {
+    const result = compile(lines('abc\nxyz'), [
+      [L[0]('abc').moveTo(L[1]('xyz').after())],
+      [L[0].delete()],
+    ])
+    const tok = result.tokens.find((t) => t.text === 'abc')!
+    // Still logically live (now in line 1), so it must not fade out with its old line.
+    expect(tok.steps[2].opacity).toBe(1)
+  })
+
   it('foldTo new token is included in lineTokens', () => {
     const initial = lines('1 + 1')
     const result = compile(initial, [[L('1 + 1').foldTo('2')]])
