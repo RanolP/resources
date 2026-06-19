@@ -12,17 +12,19 @@ fst(pair(1)(2))
 `
   // S1: map line folds in
   .step(
-    L[5].insertAfter('map = p -> f -> f(p)'),
-    L[6].insertAfter(''),
+    L[5].insertLineAfter('map = p -> f -> f(p)'),
+    L[6].insertLineAfter(''),
   )
   // S2: fst parks → map(pair(1)(2))(fst)
   .step(
-    L[8]('fst(pair(').foldTo('map(pair('),
-    L[8]('))').foldTo('))(fst)'),
+    L[8]("(pair").before().insert('map'),
+    L[8]('fst').moveTo(L[8]('))').after()),
+    L[8]('fst').before().insert('('),
+    L[8]('fst').after().insert(')'),
   )
   // S3: compose line folds in
   .step(
-    L[6].insertAfter('map∘pair = a -> b -> f -> map(pair(a)(b))(f)'),
+    L[6].insertLineAfter('map∘pair = a -> b -> f -> map(pair(a)(b))(f)'),
   )
   // S4: ( → ∘, outer ) removed → map∘pair(1)(2)(fst)
   .step(

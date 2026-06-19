@@ -23,10 +23,6 @@ interface PartialLine {
   stepStates: { visible: boolean }[]
 }
 
-function visibleState(text: string): TokenStepState {
-  return { maxWidth: `${text.length}ch`, opacity: 1, transform: 'translate(0px,0px)' }
-}
-
 const hiddenState: TokenStepState = { maxWidth: '0ch', opacity: 0, transform: 'translate(0px,0px)' }
 
 export function compile(
@@ -66,13 +62,76 @@ export function compile(
     }
   }
 
-  // Helper: record the current working state as step N states
+  // lineOrder: visual order of all line IDs (including deleted ones). Insertions splice here.
+  const lineOrder: string[] = working.lines.map((wl) => wl.id)
+
+  // lineCurrentTokens: tracks current token IDs per line for pattern matching (mutated by ops)
+  const lineCurrentTokens: Record<string, string[]> = {}
+  // lineAllTokens: accumulates ALL token IDs ever in a line in DOM order (append-only, for emitHtml)
+  const lineAllTokens: Record<string, string[]> = {}
+  for (const wl of working.lines) {
+    lineCurrentTokens[wl.id] = wl.tokens.map((t) => t.id)
+    lineAllTokens[wl.id] = wl.tokens.map((t) => t.id)
+  }
+
+  // displaced: tokens whose DOM slot (source) differs from their logical position
+  // (destination) after a move. They keep their source DOM element and slide to the
+  // destination via a transform — a true interpolation, not hide-at-source/show-at-dest.
+  const displaced = new Set<string>()
+
+  // Helper: record the current working state as step N states.
+  // Each token gets two positions: its DOM-flow position (walking lineAllTokens, where a
+  // displaced token contributes zero width so the source gap closes) and its logical
+  // position (walking working.lines). The transform = logical - DOM, so a moved token
+  // interpolates from its source slot to its destination as the step animates.
   function snapshotStep() {
     const liveTokenIds = new Set(working.lines.flatMap((l) => l.tokens.map((t) => t.id)))
     const liveLineIds = new Set(working.lines.map((l) => l.id))
 
+    const textLen = (id: string) => tokMap.get(id)?.text.length ?? 0
+
+    // DOM layout: visible lines in visual order, summing footprints
+    const domCol = new Map<string, number>()
+    const domRow = new Map<string, number>()
+    let domRowCounter = 0
+    for (const lineId of lineOrder) {
+      if (!liveLineIds.has(lineId)) continue
+      const row = domRowCounter++
+      let col = 0
+      for (const tid of lineAllTokens[lineId] ?? []) {
+        domCol.set(tid, col)
+        domRow.set(tid, row)
+        const footprint = liveTokenIds.has(tid) && !displaced.has(tid) ? textLen(tid) : 0
+        col += footprint
+      }
+    }
+
+    // Logical layout: working.lines is the true current order/position
+    const logCol = new Map<string, number>()
+    const logRow = new Map<string, number>()
+    working.lines.forEach((wl, row) => {
+      let col = 0
+      for (const t of wl.tokens) {
+        logCol.set(t.id, col)
+        logRow.set(t.id, row)
+        col += textLen(t.id)
+      }
+    })
+
     for (const [id, pt] of tokMap) {
-      pt.stepStates.push(liveTokenIds.has(id) ? visibleState(pt.text) : hiddenState)
+      if (!liveTokenIds.has(id)) { pt.stepStates.push(hiddenState); continue }
+      const footprint = displaced.has(id) ? 0 : pt.text.length
+      const dCol = domCol.get(id) ?? 0
+      const dRow = domRow.get(id) ?? 0
+      const lCol = logCol.has(id) ? logCol.get(id)! : dCol
+      const lRow = logRow.has(id) ? logRow.get(id)! : dRow
+      const dx = lCol - dCol
+      const dy = (lRow - dRow) * 1.5
+      pt.stepStates.push({
+        maxWidth: `${footprint}ch`,
+        opacity: 1,
+        transform: dx === 0 && dy === 0 ? 'translate(0px,0px)' : `translate(${dx}ch,${dy}em)`,
+      })
     }
     for (const [id, pl] of lineMap) {
       pl.stepStates.push({ visible: liveLineIds.has(id) })
@@ -82,12 +141,6 @@ export function compile(
 
   // Snapshot step 0 (initial state)
   snapshotStep()
-
-  // Capture line→token order from step-0 working state (for HTML emission)
-  const lineTokens: Record<string, string[]> = {}
-  for (const wl of working.lines) {
-    lineTokens[wl.id] = wl.tokens.map((t) => t.id)
-  }
 
   // Registration helpers that backfill hidden states for already-snapshotted steps
   function registerToken(id: string, text: string, color: string) {
@@ -106,7 +159,7 @@ export function compile(
   // Apply each step
   for (const ops of steps) {
     for (const op of ops) {
-      applyOp(op, working, tokMap, lineMap, nextId, tokenize, registerToken, registerLine, lineTokens)
+      applyOp(op, working, tokMap, lineMap, nextId, tokenize, registerToken, registerLine, lineCurrentTokens, lineAllTokens, lineOrder, displaced)
     }
     snapshotStep()
   }
@@ -118,14 +171,14 @@ export function compile(
     text: pt.text,
     color: pt.color,
     steps: pt.stepStates,
+    float: displaced.has(pt.id),
   }))
 
-  const lines: CompiledLine[] = [...lineMap.values()].map((pl) => ({
-    id: pl.id,
-    steps: pl.stepStates,
-  }))
+  // lines ordered by lineOrder (visual order) so emitHtml renders them in correct position
+  const lineById = new Map([...lineMap.entries()].map(([id, pl]) => [id, { id: pl.id, steps: pl.stepStates }]))
+  const lines: CompiledLine[] = lineOrder.map((id) => lineById.get(id)!).filter(Boolean)
 
-  return { tokens, lines, stepCount, lineTokens }
+  return { tokens, lines, stepCount, lineTokens: lineAllTokens }
 }
 
 function applyOp(
@@ -137,7 +190,10 @@ function applyOp(
   tokenize: ((code: string) => SourceLine[]) | undefined,
   registerToken: (id: string, text: string, color: string) => void,
   registerLine: (id: string) => void,
-  lineTokens: Record<string, string[]>,
+  lineCurrentTokens: Record<string, string[]>,
+  lineAllTokens: Record<string, string[]>,
+  lineOrder: string[],
+  displaced: Set<string>,
 ) {
   if (op.kind === 'delete-tokens') {
     const lines = filterLines(working, op.selection.lineFilter)
@@ -145,6 +201,8 @@ function applyOp(
       const matches = matchPattern(op.selection.pattern, wl.tokens)
       const toDelete = new Set(matches.flatMap((m) => m.tokenIds))
       wl.tokens = wl.tokens.filter((t) => !toDelete.has(t.id))
+      // Keep lineCurrentTokens in sync; lineAllTokens keeps deleted tokens (they animate out)
+      lineCurrentTokens[wl.id] = wl.tokens.map((t) => t.id)
     }
   } else if (op.kind === 'fold') {
     const lines = filterLines(working, op.selection.lineFilter)
@@ -167,7 +225,7 @@ function applyOp(
         }
         registerToken(newTok.id, newTok.text, newTok.color)
 
-        // Replace matched tokens with the new single token
+        // Replace matched tokens with the new single token in working state
         const firstIdx = wl.tokens.findIndex((t) => t.id === match.tokenIds[0])
         const lastIdx  = wl.tokens.findIndex((t) => t.id === match.tokenIds[match.tokenIds.length - 1])
         wl.tokens = [
@@ -176,17 +234,33 @@ function applyOp(
           ...wl.tokens.slice(lastIdx + 1),
         ]
 
-        // Keep lineTokens in sync: replace matched IDs with newTok.id
-        const ltIds = lineTokens[wl.id]
+        // lineCurrentTokens: replace matched IDs with newTok.id
+        const ltIds = lineCurrentTokens[wl.id]
         if (ltIds) {
           const firstLtIdx = ltIds.indexOf(match.tokenIds[0])
           const lastLtIdx  = ltIds.indexOf(match.tokenIds[match.tokenIds.length - 1])
           if (firstLtIdx !== -1 && lastLtIdx !== -1) {
-            lineTokens[wl.id] = [
+            lineCurrentTokens[wl.id] = [
               ...ltIds.slice(0, firstLtIdx),
               newTok.id,
               ...ltIds.slice(lastLtIdx + 1),
             ]
+          }
+        }
+
+        // lineAllTokens: insert newTok after the last matched token (old tokens stay for animation)
+        const allIds = lineAllTokens[wl.id]
+        if (allIds) {
+          const lastMatchedId = match.tokenIds[match.tokenIds.length - 1]
+          const insertAfterIdx = allIds.lastIndexOf(lastMatchedId)
+          if (insertAfterIdx !== -1) {
+            lineAllTokens[wl.id] = [
+              ...allIds.slice(0, insertAfterIdx + 1),
+              newTok.id,
+              ...allIds.slice(insertAfterIdx + 1),
+            ]
+          } else {
+            lineAllTokens[wl.id] = [...allIds, newTok.id]
           }
         }
       }
@@ -209,27 +283,41 @@ function applyOp(
     }
     registerLine(newLine.id)
     newLine.tokens.forEach((t) => registerToken(t.id, t.text, t.color))
-    lineTokens[newLine.id] = newLine.tokens.map((t) => t.id)
+    const tokenIds = newLine.tokens.map((t) => t.id)
+    lineCurrentTokens[newLine.id] = tokenIds
+    lineAllTokens[newLine.id] = [...tokenIds]
+    // Capture reference line ID before splice (working.lines[op.lineIndex] shifts after)
+    const refLineId = working.lines[op.lineIndex]?.id
     const insertAt = op.position === 'before' ? op.lineIndex : op.lineIndex + 1
     working.lines.splice(insertAt, 0, newLine)
+    // Mirror into lineOrder so emitHtml renders lines in correct visual order
+    const refOrderIdx = refLineId !== undefined ? lineOrder.indexOf(refLineId) : -1
+    if (refOrderIdx !== -1) {
+      const spliceAt = op.position === 'before' ? refOrderIdx : refOrderIdx + 1
+      lineOrder.splice(spliceAt, 0, newLine.id)
+    } else {
+      lineOrder.push(newLine.id)
+    }
   } else if (op.kind === 'move') {
     const srcLines = filterLines(working, op.selection.lineFilter)
     for (const wl of srcLines) {
       const matches = matchPattern(op.selection.pattern, wl.tokens)
       for (const match of [...matches].reverse()) {
-        const movedText = match.tokenIds
-          .map((id) => wl.tokens.find((t) => t.id === id)?.text ?? '')
-          .join('')
-        const movedColor = wl.tokens.find((t) => t.id === match.tokenIds[0])?.color ?? '#24292f'
+        // Keep the SAME token objects — identity is preserved so they slide rather than
+        // being deleted at the source and recreated at the destination.
+        const movedTokens = match.tokenIds
+          .map((id) => wl.tokens.find((t) => t.id === id))
+          .filter((t): t is WorkingToken => t !== undefined)
+        if (movedTokens.length === 0) continue
 
-        // Delete source tokens FIRST so anchorIdx is computed on the updated array
-        const firstIdx = wl.tokens.findIndex((t) => t.id === match.tokenIds[0])
-        const lastIdx  = wl.tokens.findIndex((t) => t.id === match.tokenIds[match.tokenIds.length - 1])
-        wl.tokens = [...wl.tokens.slice(0, firstIdx), ...wl.tokens.slice(lastIdx + 1)]
+        // Remove from the source logical line. lineAllTokens still holds them at the
+        // source DOM slot (that element is the one that visibly slides to the anchor).
+        const movedSet = new Set(movedTokens.map((t) => t.id))
+        wl.tokens = wl.tokens.filter((t) => !movedSet.has(t.id))
+        lineCurrentTokens[wl.id] = wl.tokens.map((t) => t.id)
 
-        // Now resolve anchor (wl may === anchorLine — already mutated above)
-        const anchorFilter = op.anchor.selection.lineFilter
-        const anchorLines = filterLines(working, anchorFilter)
+        // Resolve anchor (wl may === anchorLine — already mutated above)
+        const anchorLines = filterLines(working, op.anchor.selection.lineFilter)
         for (const anchorLine of anchorLines) {
           const anchorMatches = matchPattern(op.anchor.selection.pattern, anchorLine.tokens)
           if (anchorMatches.length === 0) continue
@@ -238,13 +326,54 @@ function applyOp(
             ? anchorLine.tokens.findIndex((t) => t.id === anchorMatch.tokenIds[0])
             : anchorLine.tokens.findIndex((t) => t.id === anchorMatch.tokenIds[anchorMatch.tokenIds.length - 1]) + 1
 
-          const newTok: WorkingToken = { id: nextId(), text: movedText, color: movedColor }
-          registerToken(newTok.id, newTok.text, newTok.color)
-          anchorLine.tokens.splice(anchorIdx, 0, newTok)
-          lineTokens[anchorLine.id] = anchorLine.tokens.map((t) => t.id)
+          // Insert the same tokens at the logical destination (identity preserved)
+          anchorLine.tokens.splice(anchorIdx, 0, ...movedTokens)
+          lineCurrentTokens[anchorLine.id] = anchorLine.tokens.map((t) => t.id)
+          // Mark displaced: DOM stays at source, transform slides them to the destination
+          for (const t of movedTokens) displaced.add(t.id)
           break
         }
       }
+    }
+  } else if (op.kind === 'insert-tokens') {
+    // Insert new tokens at an anchor (L[n]('pat').after()/before()). They grow in from
+    // this step while following tokens shift to make room — like a fold's replacement,
+    // but without removing anything.
+    const anchorLines = filterLines(working, op.anchor.selection.lineFilter)
+    for (const anchorLine of anchorLines) {
+      const anchorMatches = matchPattern(op.anchor.selection.pattern, anchorLine.tokens)
+      if (anchorMatches.length === 0) continue
+      const anchorMatch = anchorMatches[0]
+      const anchorIdx = op.anchor.side === 'before'
+        ? anchorLine.tokens.findIndex((t) => t.id === anchorMatch.tokenIds[0])
+        : anchorLine.tokens.findIndex((t) => t.id === anchorMatch.tokenIds[anchorMatch.tokenIds.length - 1]) + 1
+
+      const newTokens: WorkingToken[] = tokenize
+        ? tokenize(op.text)
+            .flatMap((sl) => sl.tokens)
+            .map((st) => ({ id: nextId(), text: st.text, color: st.color }))
+        : [{ id: nextId(), text: op.text, color: '#24292f' }]
+      newTokens.forEach((t) => registerToken(t.id, t.text, t.color))
+
+      // Logical insertion
+      anchorLine.tokens.splice(anchorIdx, 0, ...newTokens)
+      lineCurrentTokens[anchorLine.id] = anchorLine.tokens.map((t) => t.id)
+
+      // DOM insertion at the matching anchor position
+      const anchorAllIds = lineAllTokens[anchorLine.id]
+      if (anchorAllIds) {
+        const anchorTokenId = op.anchor.side === 'before'
+          ? anchorMatch.tokenIds[0]
+          : anchorMatch.tokenIds[anchorMatch.tokenIds.length - 1]
+        const insertAt = op.anchor.side === 'before'
+          ? anchorAllIds.indexOf(anchorTokenId)
+          : anchorAllIds.lastIndexOf(anchorTokenId) + 1
+        const newIds = newTokens.map((t) => t.id)
+        lineAllTokens[anchorLine.id] = insertAt !== -1
+          ? [...anchorAllIds.slice(0, insertAt), ...newIds, ...anchorAllIds.slice(insertAt)]
+          : [...anchorAllIds, ...newIds]
+      }
+      break
     }
   }
 }

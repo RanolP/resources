@@ -110,12 +110,25 @@ class SelectionBuilder {
     return { kind: 'move', selection: this.desc, anchor }
   }
 
-  before(): AnchorDescriptor {
-    return { selection: this.desc, side: 'before' }
+  before(): AnchorBuilder {
+    return new AnchorBuilder(this.desc, 'before')
   }
 
-  after(): AnchorDescriptor {
-    return { selection: this.desc, side: 'after' }
+  after(): AnchorBuilder {
+    return new AnchorBuilder(this.desc, 'after')
+  }
+}
+
+// Returned by SelectionBuilder.before()/after(). It is a valid AnchorDescriptor (usable
+// as a moveTo target) and also carries .insert() to drop new tokens at that position.
+class AnchorBuilder implements AnchorDescriptor {
+  constructor(
+    readonly selection: SelectionDescriptor,
+    readonly side: 'before' | 'after',
+  ) {}
+
+  insert(content: string): OperationDescriptor {
+    return { kind: 'insert-tokens', anchor: { selection: this.selection, side: this.side }, text: content }
   }
 }
 
@@ -134,13 +147,13 @@ class LineHandle {
     return { kind: 'delete-line', lineIndex: this.filter.index }
   }
 
-  insertBefore(text: string): OperationDescriptor {
-    if (this.filter.kind !== 'single') throw new Error('insertBefore() requires a single line index')
+  insertLineBefore(text: string): OperationDescriptor {
+    if (this.filter.kind !== 'single') throw new Error('insertLineBefore() requires a single line index')
     return { kind: 'insert-line', lineIndex: this.filter.index, position: 'before', text }
   }
 
-  insertAfter(text: string): OperationDescriptor {
-    if (this.filter.kind !== 'single') throw new Error('insertAfter() requires a single line index')
+  insertLineAfter(text: string): OperationDescriptor {
+    if (this.filter.kind !== 'single') throw new Error('insertLineAfter() requires a single line index')
     return { kind: 'insert-line', lineIndex: this.filter.index, position: 'after', text }
   }
 }
@@ -181,8 +194,8 @@ type LProxy = {
   (pattern: string): SelectionBuilder
   [n: number]: ((pattern: string) => SelectionBuilder) & {
     delete(): OperationDescriptor
-    insertBefore(text: string): OperationDescriptor
-    insertAfter(text: string): OperationDescriptor
+    insertLineBefore(text: string): OperationDescriptor
+    insertLineAfter(text: string): OperationDescriptor
   }
   range(from: number, to: number): (pattern: string) => SelectionBuilder
 }

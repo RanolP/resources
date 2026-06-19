@@ -35,6 +35,7 @@ export type OperationDescriptor =
   | { kind: 'move'; selection: SelectionDescriptor; anchor: AnchorDescriptor }
   | { kind: 'delete-line'; lineIndex: number }
   | { kind: 'insert-line'; lineIndex: number; position: 'before' | 'after'; text: string }
+  | { kind: 'insert-tokens'; anchor: AnchorDescriptor; text: string }
 
 // --- Compiled manifest types (output of compile.ts) ---
 
@@ -53,6 +54,9 @@ export interface CompiledToken {
   text: string
   color: string
   steps: TokenStepState[]
+  // true when this token is moved at some step: it keeps its source DOM slot and
+  // slides to the destination via transform, so it must not clip its own overflow.
+  float?: boolean
 }
 
 export interface CompiledLine {

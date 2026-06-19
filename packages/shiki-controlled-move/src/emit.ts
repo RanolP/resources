@@ -42,7 +42,12 @@ export function emitHtml(input: EmitInput): string {
       if (!tok) continue
       const step0 = tok.steps[0]
       const style = stateToStyle(step0, tok.color)
-      html += `<span id="${escapeHtml(tok.id)}" class="scm-tok" style="${style};display:inline-block;overflow:hidden;vertical-align:top;white-space:pre;">${escapeHtml(tok.text)}</span>`
+      // Moved tokens slide via transform with a collapsing flow footprint — they must
+      // not clip their own content, and should paint above the tokens they pass over.
+      const overflow = tok.float
+        ? 'overflow:visible;position:relative;z-index:1;'
+        : 'overflow:hidden;'
+      html += `<span id="${escapeHtml(tok.id)}" class="scm-tok" style="${style};display:inline-block;${overflow}vertical-align:top;white-space:pre;">${escapeHtml(tok.text)}</span>`
     }
 
     html += '</span>'

@@ -11,11 +11,26 @@ interface TextMateGrammar {
   repository: Record<string, unknown>
 }
 
+interface ExplanationPart {
+  content: string
+}
+
+interface RawToken {
+  content: string
+  color?: string
+  explanation?: ExplanationPart[]
+}
+
 interface ShikiHighlighter {
-  codeToTokens(
+  codeToTokensBase(
     code: string,
-    options: { lang: string; theme: string },
-  ): { tokens: Array<Array<{ content: string; color?: string }>> }
+    options: { lang: string; theme: string; includeExplanation?: boolean },
+  ): Array<Array<RawToken>>
+  // fallback for highlighters that only expose the merged API
+  codeToTokens?(
+    code: string,
+    options: { lang: string; theme: string; includeExplanation?: boolean },
+  ): { tokens: Array<Array<RawToken>> }
 }
 
 export type TokenizerInput =
@@ -44,12 +59,25 @@ function extractLines(
   theme: string,
   code: string,
 ): SourceLine[] {
-  const { tokens } = hl.codeToTokens(code, { lang, theme })
-  const lines: SourceLine[] = tokens.map((lineTokens) => ({
-    tokens: lineTokens.map((t) => ({
-      text: t.content,
-      color: (t.color ?? '#24292f').toLowerCase(),
-    })),
+  // TextMate's tokenizeLine2 merges adjacent tokens that share color+fontStyle
+  // (e.g. `fst(pair(` collapses into one token), which destroys the fine token
+  // boundaries pattern selection relies on. includeExplanation gives us the
+  // per-scope breakdown so we can split merged tokens back to grammar boundaries.
+  const rawLines = hl.codeToTokensBase
+    ? hl.codeToTokensBase(code, { lang, theme, includeExplanation: true })
+    : hl.codeToTokens!(code, { lang, theme, includeExplanation: true }).tokens
+  const lines: SourceLine[] = rawLines.map((lineTokens) => ({
+    tokens: lineTokens
+      .filter((t) => t.content !== '')
+      .flatMap((t) => {
+        const color = (t.color ?? '#24292f').toLowerCase()
+        if (t.explanation && t.explanation.length > 1) {
+          return t.explanation
+            .filter((e) => e.content !== '')
+            .map((e) => ({ text: e.content, color }))
+        }
+        return [{ text: t.content, color }]
+      }),
   }))
   // Shiki always appends an empty trailing line — strip it
   if (lines.length > 0 && lines[lines.length - 1].tokens.every((t) => t.text === '')) {
