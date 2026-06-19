@@ -19,6 +19,12 @@ export type LineFilter =
 export interface SelectionDescriptor {
   lineFilter: LineFilter
   pattern: string
+  // Optional occurrence index: when set, only the nth match of `pattern` (0-based) is
+  // operated on instead of every match.
+  nth?: number
+  // Optional sub-selection: the pattern locates/disambiguates a span, then the operation
+  // applies only to the nth occurrence of `focus` within that span (context stays put).
+  focus?: { pattern: string; nth: number }
 }
 
 export interface AnchorDescriptor {

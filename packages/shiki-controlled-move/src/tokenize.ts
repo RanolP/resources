@@ -71,12 +71,19 @@ function extractLines(
       .filter((t) => t.content !== '')
       .flatMap((t) => {
         const color = (t.color ?? '#24292f').toLowerCase()
-        if (t.explanation && t.explanation.length > 1) {
-          return t.explanation
-            .filter((e) => e.content !== '')
-            .map((e) => ({ text: e.content, color }))
-        }
-        return [{ text: t.content, color }]
+        // Prefer the per-scope explanation breakdown; fall back to the raw token.
+        const pieces = t.explanation && t.explanation.length > 0
+          ? t.explanation.map((e) => e.content).filter((c) => c !== '')
+          : [t.content]
+        // A scope can still group a run of punctuation/operators into one piece (e.g. `))`
+        // or `)(`), which would make per-character selection impossible. Split any
+        // word-free piece into individual characters so each is addressable; keep
+        // word-bearing pieces (identifiers, numbers, `.pair`, strings) whole.
+        return pieces.flatMap((c) =>
+          c.length > 1 && !/\w/.test(c)
+            ? [...c].map((ch) => ({ text: ch, color }))
+            : [{ text: c, color }],
+        )
       }),
   }))
   // Shiki always appends an empty trailing line — strip it

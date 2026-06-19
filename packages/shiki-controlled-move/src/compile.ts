@@ -198,7 +198,7 @@ function applyOp(
   if (op.kind === 'delete-tokens') {
     const lines = filterLines(working, op.selection.lineFilter)
     for (const wl of lines) {
-      const matches = matchPattern(op.selection.pattern, wl.tokens)
+      const matches = matchPattern(op.selection.pattern, wl.tokens, op.selection.focus, op.selection.nth)
       const toDelete = new Set(matches.flatMap((m) => m.tokenIds))
       wl.tokens = wl.tokens.filter((t) => !toDelete.has(t.id))
       // Keep lineCurrentTokens in sync; lineAllTokens keeps deleted tokens (they animate out)
@@ -207,7 +207,7 @@ function applyOp(
   } else if (op.kind === 'fold') {
     const lines = filterLines(working, op.selection.lineFilter)
     for (const wl of lines) {
-      const matches = matchPattern(op.selection.pattern, wl.tokens)
+      const matches = matchPattern(op.selection.pattern, wl.tokens, op.selection.focus, op.selection.nth)
       // Process matches in reverse order so indices stay valid
       for (const match of [...matches].reverse()) {
         const caps: Record<string, string> = match.captures
@@ -301,7 +301,7 @@ function applyOp(
   } else if (op.kind === 'move') {
     const srcLines = filterLines(working, op.selection.lineFilter)
     for (const wl of srcLines) {
-      const matches = matchPattern(op.selection.pattern, wl.tokens)
+      const matches = matchPattern(op.selection.pattern, wl.tokens, op.selection.focus, op.selection.nth)
       for (const match of [...matches].reverse()) {
         // Keep the SAME token objects — identity is preserved so they slide rather than
         // being deleted at the source and recreated at the destination.
@@ -319,7 +319,7 @@ function applyOp(
         // Resolve anchor (wl may === anchorLine — already mutated above)
         const anchorLines = filterLines(working, op.anchor.selection.lineFilter)
         for (const anchorLine of anchorLines) {
-          const anchorMatches = matchPattern(op.anchor.selection.pattern, anchorLine.tokens)
+          const anchorMatches = matchPattern(op.anchor.selection.pattern, anchorLine.tokens, op.anchor.selection.focus, op.anchor.selection.nth)
           if (anchorMatches.length === 0) continue
           const anchorMatch = anchorMatches[0]
           const anchorIdx = op.anchor.side === 'before'
@@ -341,7 +341,7 @@ function applyOp(
     // but without removing anything.
     const anchorLines = filterLines(working, op.anchor.selection.lineFilter)
     for (const anchorLine of anchorLines) {
-      const anchorMatches = matchPattern(op.anchor.selection.pattern, anchorLine.tokens)
+      const anchorMatches = matchPattern(op.anchor.selection.pattern, anchorLine.tokens, op.anchor.selection.focus, op.anchor.selection.nth)
       if (anchorMatches.length === 0) continue
       const anchorMatch = anchorMatches[0]
       const anchorIdx = op.anchor.side === 'before'

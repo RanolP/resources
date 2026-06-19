@@ -45,10 +45,16 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-export function matchPattern(pattern: string, tokens: WorkingToken[]): PatternMatch[] {
+export function matchPattern(
+  pattern: string,
+  tokens: WorkingToken[],
+  focus?: { pattern: string; nth: number },
+  nth?: number,
+): PatternMatch[] {
   const parts = parsePattern(pattern)
   const captureNames = parts.filter((p): p is { kind: 'capture'; name: string } => p.kind === 'capture').map((p) => p.name)
   const re = partsToRegex(parts)
+  const focusRe = focus ? partsToRegex(parsePattern(focus.pattern)) : null
 
   // Build full-line string and a char-offset index
   const fullText = tokens.map((t) => t.text).join('')
@@ -65,13 +71,31 @@ export function matchPattern(pattern: string, tokens: WorkingToken[]): PatternMa
   while ((m = re.exec(fullText)) !== null) {
     const start = m.index
     const end = m.index + m[0].length
-    const tokenIds = tokensInRange(tokens, offsets, start, end)
     const captures: Record<string, string> = {}
     captureNames.forEach((name, i) => { captures[name] = m![i + 1] })
-    results.push({ tokenIds, captures })
     // Restart from start+1 to allow overlapping matches
     re.lastIndex = start + 1
+
+    if (focusRe) {
+      // Narrow to the nth occurrence of `focus` within the matched span; the rest of the
+      // match is context that stays untouched. Skip the match if that occurrence is absent.
+      const span = fullText.slice(start, end)
+      let fm: RegExpExecArray | null
+      let count = 0
+      let range: [number, number] | null = null
+      focusRe.lastIndex = 0
+      while ((fm = focusRe.exec(span)) !== null) {
+        if (count === focus!.nth) { range = [start + fm.index, start + fm.index + fm[0].length]; break }
+        count++
+        focusRe.lastIndex = fm.index + 1
+      }
+      if (!range) continue
+      results.push({ tokenIds: tokensInRange(tokens, offsets, range[0], range[1]), captures })
+    } else {
+      results.push({ tokenIds: tokensInRange(tokens, offsets, start, end), captures })
+    }
   }
+  if (nth !== undefined) return results[nth] ? [results[nth]] : []
   return results
 }
 
@@ -94,6 +118,13 @@ function tokensInRange(
 
 class SelectionBuilder {
   constructor(private readonly desc: SelectionDescriptor) {}
+
+  // Narrow the operation to the nth occurrence of `sub` within the matched span. The
+  // outer pattern still matches (for context/disambiguation) but only the focused tokens
+  // are folded/deleted/moved — e.g. L[9]('map(pair(').focus('(').foldTo('∘').
+  focus(sub: string, nth = 0): SelectionBuilder {
+    return new SelectionBuilder({ ...this.desc, focus: { pattern: sub, nth } })
+  }
 
   foldTo(
     replacement: string | ((caps: Record<string, string>) => string),
@@ -137,9 +168,9 @@ class AnchorBuilder implements AnchorDescriptor {
 class LineHandle {
   constructor(private readonly filter: LineFilter) {}
 
-  // L[n]('pattern') — returns a SelectionBuilder
-  __call(pattern: string): SelectionBuilder {
-    return new SelectionBuilder({ lineFilter: this.filter, pattern })
+  // L[n]('pattern') or L[n]('pattern', nth) — returns a SelectionBuilder
+  __call(pattern: string, nth?: number): SelectionBuilder {
+    return new SelectionBuilder({ lineFilter: this.filter, pattern, nth })
   }
 
   delete(): OperationDescriptor {
@@ -165,8 +196,8 @@ class LineHandle {
 // L.range(n,m)       → LineHandle
 
 function makeL(): typeof L {
-  const callable = (pattern: string): SelectionBuilder =>
-    new SelectionBuilder({ lineFilter: { kind: 'all' }, pattern })
+  const callable = (pattern: string, nth?: number): SelectionBuilder =>
+    new SelectionBuilder({ lineFilter: { kind: 'all' }, pattern, nth })
 
   return new Proxy(callable as typeof L, {
     get(_target, key) {
@@ -191,13 +222,13 @@ function makeL(): typeof L {
 
 // Type for the L export
 type LProxy = {
-  (pattern: string): SelectionBuilder
-  [n: number]: ((pattern: string) => SelectionBuilder) & {
+  (pattern: string, nth?: number): SelectionBuilder
+  [n: number]: ((pattern: string, nth?: number) => SelectionBuilder) & {
     delete(): OperationDescriptor
     insertLineBefore(text: string): OperationDescriptor
     insertLineAfter(text: string): OperationDescriptor
   }
-  range(from: number, to: number): (pattern: string) => SelectionBuilder
+  range(from: number, to: number): (pattern: string, nth?: number) => SelectionBuilder
 }
 
 export const L: LProxy = makeL() as LProxy
