@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resources — 발표 슬라이드</title>
+  <style>
+    @font-face{font-family:'Freesentation';font-weight:400;font-display:swap;src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-4Regular.woff2') format('woff2');}
+    @font-face{font-family:'Freesentation';font-weight:700;font-display:swap;src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-7Bold.woff2') format('woff2');}
+    :root{color-scheme:light;}
+    *{box-sizing:border-box;}
+    body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.5rem;
+         background:#fff;color:#111;padding:2rem;
+         font-family:'Freesentation','Noto Sans KR',system-ui,sans-serif;}
+    header{text-align:center;}
+    h1{font-weight:700;font-size:2.5rem;margin:0;letter-spacing:-.02em;}
+    .subtitle{color:#666;margin-top:.4rem;}
+    ul.talks{list-style:none;padding:0;margin:0;width:100%;max-width:36rem;display:flex;flex-direction:column;gap:1rem;}
+    a.talk{display:flex;align-items:center;gap:.75rem;text-decoration:none;color:inherit;
+           border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem 1.5rem;
+           transition:border-color .15s,box-shadow .15s,transform .15s;}
+    a.talk:hover{border-color:#67e8f9;box-shadow:0 6px 20px rgba(0,0,0,.06);transform:translateY(-2px);}
+    .talk-body{flex:1;}
+    .talk-title{font-weight:700;font-size:1.25rem;}
+    .talk-desc{color:#666;margin-top:.25rem;}
+    .arrow{color:#06b6d4;font-size:1.5rem;}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Resources</h1>
+    <div class="subtitle">발표 슬라이드 모음</div>
+  </header>
+
+  <ul class="talks">
+    <!-- 새 발표를 추가하려면 아래 <li> 블록을 복제하고 href / 제목 / 설명을 바꾸세요. -->
+    <li>
+      <a class="talk" href="./adt4fun/">
+        <div class="talk-body">
+          <div class="talk-title">ADT for FUN</div>
+          <div class="talk-desc">대수적 자료형과 Church Encoding 입문</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+    </li>
+  </ul>
+</body>
+</html>

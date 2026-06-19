@@ -29,13 +29,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build Slidev
+      - name: Build all decks + assemble site
         env:
           REPO_NAME: ${{ github.event.repository.name }}
-        run: pnpm build --base "/$REPO_NAME/" --out dist
-
-      - name: Create 404 fallback for SPA routing
-        run: cp dist/index.html dist/404.html
+        run: BASE_PREFIX="/$REPO_NAME" pnpm build
 
       - uses: actions/configure-pages@v5
 

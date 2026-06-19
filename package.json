@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "slidev build",
-    "dev": "slidev --open",
-    "export": "slidev export"
+    "build": "node scripts/build-decks.mjs",
+    "dev": "node scripts/dev.mjs",
+    "export": "slidev export decks/adt4fun.md"
   },
   "dependencies": {
     "@slidev/cli": "^52.14.2",

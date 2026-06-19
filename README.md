@@ -1,6 +1,11 @@
 # Resources
 
-Slidev deck, vibe-coded. Deployed to GitHub Pages on every push to `main`.
+A multi-deck Slidev host, vibe-coded. Each talk lives under `decks/<slug>.md` and
+is served at `https://<user>.github.io/<repo>/<slug>/`; the site root is a list of
+the talks. Deployed to GitHub Pages on every push to `main`.
+
+Adding a talk = drop a markdown in `decks/` (its filename is the slug) and add a
+card in [site/index.html](site/index.html). No workflow edits needed.
 
 ## Dev
 
@@ -9,7 +14,8 @@ Tooling pinned via [mise](https://mise.jdx.dev) (see [mise.toml](mise.toml)).
 ```sh
 mise install          # one-time: installs pinned Node + pnpm
 pnpm install
-pnpm dev
+pnpm dev               # always prompts you to pick a deck
+pnpm dev adt4fun       # …or run a deck by slug directly
 ```
 
 Opens at http://localhost:3030.
@@ -17,15 +23,21 @@ Opens at http://localhost:3030.
 ## Build
 
 ```sh
-pnpm build      # static SPA in ./dist
-pnpm export     # PDF export (needs Playwright: pnpm dlx playwright install chromium)
+pnpm build      # builds every decks/*.md into ./dist/<slug>/ + the talk-list root
+pnpm export     # PDF export of decks/adt4fun.md (needs Playwright: pnpm dlx playwright install chromium)
 ```
+
+`pnpm build` ([scripts/build-decks.mjs](scripts/build-decks.mjs)) builds each deck
+separately with its own `--base`/`--out`, copies [site/index.html](site/index.html)
+as the landing, and writes a root `404.html` redirector (GitHub Pages serves one
+root 404 for all paths, so a mid-deck reload bounces back to that deck's index).
+`BASE_PREFIX` sets the hosting root (CI uses `/<repo>`; empty locally).
 
 ## Deploy
 
 1. Push to a GitHub repo with `main` as default branch.
 2. Repo **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 3. First push to `main` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml).
-4. Site lands at `https://<user>.github.io/<repo>/`.
+4. Site lands at `https://<user>.github.io/<repo>/` (talk list); each deck at `…/<repo>/<slug>/`.
 
-The workflow derives `--base` from the repo name automatically, so renaming the repo or forking Just Works.
+The workflow derives `BASE_PREFIX` from the repo name automatically, so renaming the repo or forking Just Works.
