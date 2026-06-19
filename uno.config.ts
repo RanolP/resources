@@ -11,6 +11,7 @@ export default defineConfig({
     {
       getCSS: () =>
         [
+          `@font-face{font-family:'Galmuri9';font-weight:400;font-style:normal;font-display:swap;src:url('https://cdn.jsdelivr.net/npm/galmuri/dist/Galmuri9.woff2') format('woff2');}`,
           freesentation(100, 'Thin'),
           freesentation(200, 'ExtraLight'),
           freesentation(300, 'Light'),

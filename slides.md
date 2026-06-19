@@ -21,6 +21,34 @@ fonts:
 
 ## Introduction to Church Encoding
 
+
+---
+layout: center
+class: text-center
+---
+
+# Hello? 👋
+
+<div class="flex flex-col items-center gap-3 mt-6">
+
+<img src="https://github.com/RanolP.png" class="w-32 h-32 rounded-full" />
+
+<div class="flex items-center gap-5 text-xl">
+  <a class="inline-flex items-center gap-1.5 no-underline" href="https://github.com/RanolP"><span class="i-mdi-github" />RanolP</a>
+  <a class="inline-flex items-center gap-1.5 no-underline" href="https://twitter.com/RanolP_777"><span class="i-mdi-twitter text-[#1DA1F2]" />RanolP_777</a>
+</div>
+
+<div class="text-base op-60">라프텔에서 프론트엔드 엔지니어를 맡고 있습니다. 톡기겅듀 아니애오.</div>
+
+<div class="grid grid-cols-2 gap-2 mt-2 w-fit">
+  <span class="px-3 py-1 rounded-full bg-cyan-100 text-cyan-800 text-sm text-center font-['Galmuri9']">#회사로_바식스_모셔감</span>
+  <span class="px-3 py-1 rounded-full bg-cyan-100 text-cyan-800 text-sm text-center font-['Galmuri9']">#프로그래밍_언어론</span>
+  <span class="px-3 py-1 rounded-full bg-cyan-100 text-cyan-800 text-sm text-center font-['Galmuri9']">#CSE_몰라요</span>
+  <span class="px-3 py-1 rounded-full bg-cyan-100 text-cyan-800 text-sm text-center font-['Galmuri9']">#프론트엔드가_뭐더라</span>
+</div>
+
+</div>
+
 ---
 layout: default
 class: text-left
@@ -155,7 +183,7 @@ if = cond -> then -> otherwise ->
 # `match` 없이 `if` 구현하기
 
 <MatchDerivation :step="$slidev.nav.clicks" />
-<span v-click="8" />
+<span v-click="7" />
 
 ---
 ---
@@ -181,7 +209,7 @@ match(b)(           t)(          f )
 # 곱 타입 구성하기
 
 <PairDerivation :step="$slidev.nav.clicks" />
-<span v-click="7" />
+<span v-click="6" />
 
 ---
 ---
@@ -285,119 +313,110 @@ if(true) (pair(_ -> true)(_ -> false))
 ---
 ---
 
-# 투어 ①: `Maybe`
+# 타입 다항식 🤔
+
+<v-switch>
+
+<template #0>
 
 ```funnylambda
-data Maybe[A] = .none + .some(A)
+// 덧셈
+data Add[X] = .one + .two(X)
+// 곱셈
+data Square[X] = .pair(X, X)
 ```
 
-<div class="grid grid-cols-2 gap-6 mt-4">
+</template>
 
-<div>
+<template #1>
 
-**Encoding**
 ```funnylambda
-.none    := n -> s -> n
-.some(a) := n -> s -> s(a)
+// 덧셈
+data Add[X] = one + two × X
+// 곱셈
+data Square[X] = pair × X × X
 ```
 
-</div>
+</template>
 
-<div>
+<template #2>
 
-**Eliminator**
 ```funnylambda
-match m {
-  .none    -> d,
-  .some(x) -> f(x)
-}
-// ≡
-m(d)(f)
+// 덧셈
+data Add[X] = 1 + 1 × X
+// 곱셈
+data Square[X] = 1 × X × X
 ```
 
-</div>
+</template>
 
-</div>
+<template #3>
+
+```funnylambda
+// 덧셈
+data Add[X] = 1 + X
+// 곱셈
+data Square[X] = X²
+```
+
+</template>
+
+</v-switch>
 
 ---
 ---
 
-# 투어 ②: `Pair` — 변형 하나, 필드 둘
+# 타입 미분 🤔🤔🤔
+
+
+<v-switch>
+
+<template #0>
 
 ```funnylambda
-data Pair[A, B] = .pair(A, B)
+data Original = X³ + X² + X + 1
 ```
 
-<div class="grid grid-cols-2 gap-6 mt-4">
+</template>
 
-<div>
+<template #1>
 
-**Encoding + Eliminator**
 ```funnylambda
-.pair(a)(b) := p -> p(a)(b)
-
-match p { .pair(a, b) -> e }
-// ≡
-p(a -> b -> e)
+data Original = X³ + X² + X + 1
+data Derivated = X -> 3 × X² + 2 × X + 1
 ```
 
-</div>
+</template>
 
-<div>
+<template #2>
 
-**사용**
 ```funnylambda
-fst := p -> p(a -> b -> a)
-snd := p -> p(a -> b -> b)
+data Original = X³ + X² + X + 1
+data Derivated = X -> 3 × X² + 2 × X + 1
+data 3 = .first + .second + .third
+data 2 = .first + .second
+data 1 = .first
 ```
 
-</div>
+</template>
 
-</div>
-
-<div class="mt-4 opacity-70 text-sm">
-곱도 같은 렌즈로 읽힌다 — 다만 핸들러가 하나일 뿐.
-</div>
-
----
----
-
-# 투어 ③: `List` — 재귀 자료형
+<template #3>
 
 ```funnylambda
-data List[A] = .nil + .cons(A, List[A])
+data Original = X³ + X² + X + 1
+data Derivated = X -> 3 × X² + 2 × X + 1
+data 3 = .first + .second + .third
+data 2 = .first + .second
+data 1 = .first
 ```
 
 ```funnylambda
-.nil        := n -> c -> n
-.cons(h, t) := n -> c -> c(h)(t)
+data Position3D = .pos(x: Int, y: Int, z: Int)
 ```
 
-<div v-click class="mt-6 text-xl">
-이 eliminator 의 이름을 당신은 이미 안다:<br/>
-<strong><code>foldr</code></strong>.
-</div>
+</template>
 
-<div v-click class="mt-4 opacity-70">
-<code>foldr(nilCase)(consCase)(list)</code> = <code>list(nilCase)(consCase)</code>.
-</div>
-
----
-layout: center
-class: text-center
----
-
-# 요약
-
-<div class="text-2xl space-y-6 mt-6">
-
-Sum types are <strong>curried dispatch</strong>.
-
-<code>match</code> is just <strong>application</strong>.
-
-<strong>Data is behavior.</strong>
-
-</div>
+</v-switch>
 
 ---
 layout: center
@@ -406,16 +425,19 @@ class: text-center
 
 # 감사합니다
 
-<div class="opacity-70 mt-6">
-질문 환영
+
+<div class="w-fit">
+
+이런 게 재밌다면 **진지하게** 프로그래밍 언어론을 배워봅시다.
+
+<div class="text-3 text-left prod-rules">
+
+$$
+\frac{\Gamma \vdash a : A \qquad \Gamma \vdash b : B}{\Gamma \vdash (a, b) : A \times B}\ (\text{Prod-Intro}) \\[1em]
+\frac{\Gamma \vdash p : A \times B}{\Gamma \vdash \textrm{fst }p : A}\ (\text{Prod-Elim}_1) \\[1em]
+\frac{\Gamma \vdash p : A \times B}{\Gamma \vdash \textrm{snd }p : B}\ (\text{Prod-Elim}_2)
+$$
+
 </div>
-
-<div class="mt-12 text-sm opacity-60 space-y-1">
-
-더 읽어보기:
-
-- Pierce, *Types and Programming Languages* — STLC, encoding 장
-- Wadler, "Recursive types for free!" — 재귀 자료형의 encoding
-- Scott / Böhm-Berarducci encoding — Church 의 그 다음 단계
 
 </div>
