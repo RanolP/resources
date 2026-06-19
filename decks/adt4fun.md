@@ -1,6 +1,6 @@
 ---
 theme: apple-basic
-title: FUN을 위한 대수적 자료형 — Church Encoding 입문
+title: Algebraic Data Type for FUN — Introduction to Church Encoding
 info: |
   Algebraic Data Type for FUN: An Introduction to Church Encoding.
   A 20-minute meetup talk.
@@ -12,9 +12,9 @@ colorSchema: light
 background: '#fff'
 fonts:
   provider: none
-  sans: 'Freesentation, Noto Sans KR, system-ui, sans-serif'
-  serif: 'Freesentation, Noto Serif KR, serif'
-  mono: '"JetBrains Mono", "Noto Sans KR", monospace'
+  sans: 'Freesentation, Noto Sans KR, Twemoji, system-ui, sans-serif'
+  serif: 'Freesentation, Noto Serif KR, Twemoji, serif'
+  mono: '"JetBrains Mono", "Noto Sans KR", Twemoji, monospace'
 ---
 
 # Algebraic Data Type for FUN

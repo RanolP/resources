@@ -12,6 +12,9 @@ export default defineConfig({
       getCSS: () =>
         [
           `@font-face{font-family:'Galmuri9';font-weight:400;font-style:normal;font-display:swap;src:url('https://cdn.jsdelivr.net/npm/galmuri/dist/Galmuri9.woff2') format('woff2');}`,
+          // Color emoji: COLR/CPAL Twemoji, appended to the font stacks below so only
+          // emoji codepoints (absent from the text fonts) fall through to it.
+          `@font-face{font-family:'Twemoji';font-display:swap;src:url('https://cdn.jsdelivr.net/npm/twemoji-colr-font@latest/twemoji.woff2') format('woff2');}`,
           freesentation(100, 'Thin'),
           freesentation(200, 'ExtraLight'),
           freesentation(300, 'Light'),

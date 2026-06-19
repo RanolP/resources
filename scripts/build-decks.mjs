@@ -5,7 +5,7 @@
 // multi-entry build passes one shared --base to all decks, which can't produce
 // per-subpath hosting. BASE_PREFIX is the hosting root (CI sets "/<repo>"; empty locally).
 import { execFileSync } from 'node:child_process'
-import { readdirSync, mkdirSync, copyFileSync, writeFileSync } from 'node:fs'
+import { readdirSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, basename, resolve } from 'node:path'
 
 const BASE_PREFIX = (process.env.BASE_PREFIX ?? '').replace(/\/$/, '')
@@ -33,9 +33,50 @@ for (const slug of slugs) {
   })
 }
 
-// Landing page at the site root: the talk list.
+// Landing page at the site root: the talk list, one card per deck. Each card's
+// title/subtitle come from the deck's first-slide heading (#) and subheading (##),
+// so the deck markdown is the single source of truth — site/index.html is a
+// template whose <!--TALKS--> marker we fill in here.
+const esc = (s) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+function deckMeta(slug) {
+  const raw = readFileSync(join(DECKS_DIR, `${slug}.md`), 'utf8')
+  let body = raw
+  let frontTitle
+  const fm = raw.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/)
+  if (fm) {
+    body = raw.slice(fm[0].length)
+    const t = fm[0].match(/^title:\s*(.+)$/m)
+    if (t) frontTitle = t[1].trim()
+  }
+  const firstSlide = body.split(/^---\s*$/m)[0]
+  const h1 = firstSlide.match(/^#\s+(.+)$/m)
+  const h2 = firstSlide.match(/^##\s+(.+)$/m)
+  return {
+    title: (h1 ? h1[1] : frontTitle ?? slug).trim(),
+    desc: (h2 ? h2[1] : '').trim(),
+  }
+}
+
+const cards = slugs
+  .map((slug) => {
+    const { title, desc } = deckMeta(slug)
+    return `    <li>
+      <a class="talk" href="./${slug}/">
+        <div class="talk-body">
+          <div class="talk-title">${esc(title)}</div>
+          <div class="talk-desc">${esc(desc)}</div>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+    </li>`
+  })
+  .join('\n')
+
 mkdirSync(DIST_DIR, { recursive: true })
-copyFileSync(join('site', 'index.html'), join(DIST_DIR, 'index.html'))
+const landing = readFileSync(join('site', 'index.html'), 'utf8').replace('<!--TALKS-->', cards)
+writeFileSync(join(DIST_DIR, 'index.html'), landing)
 
 // Root 404 redirector. GitHub Pages serves a single root 404.html for every
 // not-found path, so per-deck 404s are ignored. This reads the first path
